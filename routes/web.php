@@ -1,18 +1,45 @@
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
 
-Route::get('/', function () {
-    return view('welcome');
+/*
+|--------------------------------------------------------------------------
+| Admin Routes
+|--------------------------------------------------------------------------
+| Only admin can access product management & predictions
+*/
+Route::middleware(['auth', 'role:admin'])->group(function () {
+
+    Route::get('/admin/dashboard', function () {
+        return view('admin.dashboard');
+    });
+
+    // Product management routes (placeholder)
+    Route::get('/admin/products', function () {
+        return "Manage Products";
+    });
+
+    // Prediction management routes (placeholder)
+    Route::get('/admin/predictions', function () {
+        return "Manage Predictions";
+    });
 });
 
-Route::get('/register', [AuthController::class,'showRegister'])->name('register');
-Route::post('/register', [AuthController::class,'register']);
+/*
+|--------------------------------------------------------------------------
+| Employee Routes
+|--------------------------------------------------------------------------
+| Employees log sales and view stock
+*/
+Route::middleware(['auth', 'role:employee'])->group(function () {
 
-Route::get('/login', [AuthController::class,'showLogin'])->name('login');
-Route::post('/login', [AuthController::class,'login']);
+    Route::get('/employee/dashboard', function () {
+        return view('employee.dashboard');
+    });
 
-Route::post('/logout', [AuthController::class,'logout'])->name('logout');
+    Route::get('/sales', function () {
+        return "Log Sales";
+    });
 
-Route::get('/dashboard', function () {
-    return "You are logged in";
-})->middleware('auth');
+    Route::get('/stock', function () {
+        return "View Stock";
+    });
+});
