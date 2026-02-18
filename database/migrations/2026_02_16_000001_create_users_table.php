@@ -6,17 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up(): void {
-        Schema::table('users', function (Blueprint $table) {
-            // Add role column to define user permissions
-            $table->enum('role', ['admin', 'employee'])
-                  ->default('employee')
-                  ->after('password');
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->string('password');
+            $table->enum('role', ['admin', 'employee'])->default('employee');
+            $table->rememberToken();
+            $table->timestamps();
         });
     }
 
     public function down(): void {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('role');
-        });
+        Schema::dropIfExists('users');
     }
 };
