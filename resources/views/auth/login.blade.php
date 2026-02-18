@@ -13,11 +13,26 @@
         <button type="submit">Login</button>
     </form>
 
-    <form method="POST" action="/logout">
-        @csrf
-        <button type="submit">Logout</button>
-    </form>
+    <p>
+        <a href="/register">Register</a>
+    </p>
 
-    <a href="/register">Register</a>
+    <!-- Display errors -->
+    @if($errors->any())
+        <div style="color:red">
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <!-- Display success messages -->
+    @if(session('success'))
+        <div style="color:green">
+            {{ session('success') }}
+        </div>
+    @endif
 </body>
 </html>
