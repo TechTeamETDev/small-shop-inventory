@@ -6,17 +6,6 @@
 <body>
     <h2>Login</h2>
 
-    <form method="POST" action="/login">
-        @csrf
-        <input type="email" name="email" placeholder="Email" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <button type="submit">Login</button>
-    </form>
-
-    <p>
-        <a href="/register">Register</a>
-    </p>
-
     <!-- Display errors -->
     @if($errors->any())
         <div style="color:red">
@@ -34,5 +23,12 @@
             {{ session('success') }}
         </div>
     @endif
+
+    <form method="POST" action="{{ route('login') }}">
+        @csrf
+        <input type="email" name="email" placeholder="Email" value="{{ old('email') }}" required><br><br>
+        <input type="password" name="password" placeholder="Password" required><br><br>
+        <button type="submit">Login</button>
+    </form>
 </body>
 </html>
