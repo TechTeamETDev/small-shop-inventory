@@ -29,9 +29,9 @@ Route::middleware('auth')->group(function () {
     });
 
     // Employee dashboard
-    Route::middleware('can:isEmployee')->group(function () {
-        Route::get('/employee/dashboard', function () {
-            return view('employee.dashboard');
-        })->name('employee.dashboard');
-    });
+  Route::middleware(['auth', 'can:isEmployee'])->group(function () {
+    Route::get('/employee/dashboard', function () {
+        return view('employee.dashboard');
+    })->name('employee.dashboard');
+});
 });
