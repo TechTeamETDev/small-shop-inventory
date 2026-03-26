@@ -11,6 +11,7 @@ use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\ProfitController;
 
 
+
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -56,17 +57,18 @@ Route::middleware(['auth', 'permission:manage users'])->group(function () {
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 });
 
-    // Products
-    Route::middleware(['permission:view products'])->group(function () {
-        Route::get('/products', [ProductController::class, 'index'])->name('products.index');
-        Route::get('/products/{id}', [ProductController::class, 'show'])->name('products.show');
-    });
 
-    // Categories
-    Route::middleware(['permission:manage categories'])->group(function () {
-        Route::resource('categories', CategoryController::class);
-    });
 
+Route::middleware(['auth'])->group(function () {
+// Categories
+    Route::resource('categories', CategoryController::class)
+        ->except(['create', 'edit', 'show']);
+  // Products
+    Route::resource('products', ProductController::class)
+        ->except(['create', 'edit', 'show']);
+});
+  
+   
     // Sales
     Route::middleware(['permission:create sales'])->group(function () {
         Route::resource('sales', SaleController::class);
