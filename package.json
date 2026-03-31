@@ -22,6 +22,7 @@
         "vite": "^8.0.0"
     },
     "dependencies": {
+        "@inertiajs/inertia": "^0.11.1",
         "@inertiajs/react": "^2.3.18"
     }
 }

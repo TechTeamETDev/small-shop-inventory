@@ -1,5 +1,5 @@
 import { useForm, usePage } from "@inertiajs/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Index() {
     const { categories } = usePage().props;
@@ -17,6 +17,14 @@ export default function Index() {
         name: "",
         description: "",
     });
+    useEffect(() => {
+        const saveFormData = () => {
+            localStorage.setItem("form_data", JSON.stringify(data));
+        };
+
+        const interval = setInterval(saveFormData, 10000); // save every 10 sec
+        return () => clearInterval(interval);
+    }, [data]);
 
     function submit(e) {
         e.preventDefault();

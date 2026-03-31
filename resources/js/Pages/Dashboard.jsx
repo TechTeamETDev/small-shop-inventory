@@ -1,3 +1,4 @@
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import React from "react";
 import { usePage, useForm, Link } from "@inertiajs/react";
 

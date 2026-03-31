@@ -5,12 +5,10 @@ namespace App\Http\Middleware;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
-
-
 class HandleInertiaRequests extends Middleware
 {
     /**
-     * The root template that is loaded on the first page visit.
+     * The root template loaded on the first page visit.
      *
      * @var string
      */
@@ -30,21 +28,26 @@ class HandleInertiaRequests extends Middleware
      * @return array<string, mixed>
      */
     public function share(Request $request): array
-{
-    return [
-        ...parent::share($request),
+    {
+        // Get the authenticated user and eager-load roles
+        $user = $request->user()?->load('roles');
 
-        'auth' => [
-            'user' => $request->user() ? [
-                'id' => $request->user()->id,
-                'name' => $request->user()->name,
-
-                // ADD THIS LINE
-                'permissions' => $request->user()
-                    ->getAllPermissions()
-                    ->pluck('name'),
-            ] : null,
-        ],
-    ];
-}
+        return array_merge(parent::share($request), [
+            'auth' => [
+                'user' => $user
+                    ? [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'roles' => $user->roles->map(fn($role) => [
+                            'id' => $role->id,
+                            'name' => $role->name,
+                        ]),
+                        'permissions' => $user
+                            ->getAllPermissions()
+                            ->pluck('name'),
+                    ]
+                    : null,
+            ],
+        ]);
+    }
 }
