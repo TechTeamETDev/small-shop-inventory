@@ -1,18 +1,90 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
-import Dropdown from '@/Components/Dropdown';
-import NavLink from '@/Components/NavLink';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import ApplicationLogo from "@/Components/ApplicationLogo";
+import Dropdown from "@/Components/Dropdown";
+import NavLink from "@/Components/NavLink";
+import ResponsiveNavLink from "@/Components/ResponsiveNavLink";
+import { Link, usePage, router } from "@inertiajs/react";
+import { useState, useEffect, useRef } from "react";
 
 export default function AuthenticatedLayout({ header, children }) {
-    const user = usePage().props.auth.user;
+    const { auth } = usePage().props;
+    const user = auth.user;
 
+    // Session timeout logic (from laravel-migration)
+    const [showWarning, setShowWarning] = useState(false);
+    const timeoutRef = useRef(null);
+    const warningRef = useRef(null);
+    const WARNING_TIME = 60 * 1000; // 1 minute
+
+    const getTimeout = () => {
+        const role = user?.roles?.[0];
+        if (role === "Admin") return 10 * 60 * 1000; // 10 minutes
+        return 60 * 60 * 1000; // 1 hour for employees
+    };
+
+    const autoSave = () => {
+        const forms = document.querySelectorAll("form[data-autosave]");
+        const unsavedForms = JSON.parse(
+            localStorage.getItem("unsaved_forms") || "{}",
+        );
+        forms.forEach((form) => {
+            const formName = form.dataset.autosave;
+            const data = {};
+            new FormData(form).forEach((value, key) => {
+                data[key] = value;
+            });
+            unsavedForms[formName] = data;
+        });
+        localStorage.setItem("unsaved_forms", JSON.stringify(unsavedForms));
+        console.log("💾 Auto-saved forms to localStorage");
+    };
+
+    const resetTimer = () => {
+        setShowWarning(false);
+        clearTimeout(timeoutRef.current);
+        clearTimeout(warningRef.current);
+
+        const totalTime = getTimeout();
+
+        warningRef.current = setTimeout(
+            () => setShowWarning(true),
+            totalTime - WARNING_TIME,
+        );
+
+        timeoutRef.current = setTimeout(() => {
+            autoSave();
+            router.visit("/logout", { method: "post" });
+        }, totalTime);
+    };
+
+    useEffect(() => {
+        const events = ["click", "mousemove", "keypress"];
+        events.forEach((e) => window.addEventListener(e, resetTimer));
+        resetTimer();
+        return () => {
+            events.forEach((e) => window.removeEventListener(e, resetTimer));
+            clearTimeout(timeoutRef.current);
+            clearTimeout(warningRef.current);
+        };
+    }, []);
+
+    // Dropdown navigation (from HEAD)
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
 
     return (
         <div className="min-h-screen bg-gray-100">
+            {showWarning && (
+                <div className="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded shadow">
+                    ⚠ Session expiring in 1 minute!
+                    <button
+                        onClick={resetTimer}
+                        className="ml-3 bg-white text-red-500 px-2 py-1 rounded"
+                    >
+                        Stay
+                    </button>
+                </div>
+            )}
+
             <nav className="border-b border-gray-100 bg-white">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
@@ -25,8 +97,8 @@ export default function AuthenticatedLayout({ header, children }) {
 
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
+                                    href={route("dashboard")}
+                                    active={route().current("dashboard")}
                                 >
                                     Dashboard
                                 </NavLink>
@@ -43,7 +115,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
                                             >
                                                 {user.name}
-
                                                 <svg
                                                     className="-me-0.5 ms-2 h-4 w-4"
                                                     xmlns="http://www.w3.org/2000/svg"
@@ -62,12 +133,12 @@ export default function AuthenticatedLayout({ header, children }) {
 
                                     <Dropdown.Content>
                                         <Dropdown.Link
-                                            href={route('profile.edit')}
+                                            href={route("profile.edit")}
                                         >
                                             Profile
                                         </Dropdown.Link>
                                         <Dropdown.Link
-                                            href={route('logout')}
+                                            href={route("logout")}
                                             method="post"
                                             as="button"
                                         >
@@ -96,8 +167,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <path
                                         className={
                                             !showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
+                                                ? "inline-flex"
+                                                : "hidden"
                                         }
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -107,8 +178,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <path
                                         className={
                                             showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
+                                                ? "inline-flex"
+                                                : "hidden"
                                         }
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -123,14 +194,14 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 <div
                     className={
-                        (showingNavigationDropdown ? 'block' : 'hidden') +
-                        ' sm:hidden'
+                        (showingNavigationDropdown ? "block" : "hidden") +
+                        " sm:hidden"
                     }
                 >
                     <div className="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
+                            href={route("dashboard")}
+                            active={route().current("dashboard")}
                         >
                             Dashboard
                         </ResponsiveNavLink>
@@ -147,12 +218,12 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
 
                         <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
+                            <ResponsiveNavLink href={route("profile.edit")}>
                                 Profile
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 method="post"
-                                href={route('logout')}
+                                href={route("logout")}
                                 as="button"
                             >
                                 Log Out
