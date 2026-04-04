@@ -67,9 +67,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Purchases
-    Route::middleware(['permission:create purchases'])->group(function () {
-        Route::resource('purchases', PurchaseController::class);
-    });
+    // Purchases
+Route::middleware(['permission:create purchases'])->group(function () {
+    // Add this line BEFORE the resource route
+    Route::get('/get-products/{category_id}', [PurchaseController::class, 'getProductsByCategory'])->name('purchases.get-products');
+    
+    Route::resource('purchases', PurchaseController::class);
+});
 
     // Analytics
     Route::middleware(['permission:view analytics'])->group(function () {
