@@ -20,8 +20,14 @@ class Product extends Model
         'is_active',
     ];
 
-    public function category()
-    {
-        return $this->belongsTo(Category::class);
-    }
+   // Add this inside your Product class
+public function purchaseItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+{
+    return $this->hasMany(PurchaseItem::class);
+}
+
+public function category(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+{
+    return $this->belongsTo(Category::class);
+}
 }

@@ -72,6 +72,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Purchases
     Route::middleware(['permission:create purchases'])->group(function () {
         Route::resource('purchases', PurchaseController::class);
+        // Route for the dynamic category -> product filter
+Route::get('/purchases/get-products/{categoryId}', [PurchaseController::class, 'getProductsByCategory'])
+    ->name('purchases.getProducts');
+
+// Standard resource routes (index, create, store, show, etc.)
+Route::resource('purchases', PurchaseController::class);
     });
 
     // Analytics
