@@ -12,14 +12,14 @@ return new class extends Migration
    public function up(): void
 {
     Schema::create('purchases', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Belongs to user [cite: 63]
-        $table->string('supplier_name'); // Step 1: Manual entry [cite: 8]
-        $table->timestamp('purchase_date'); // Step 1 [cite: 9]
-        $table->decimal('total_cost', 15, 2)->default(0); // Step 4 [cite: 33]
-        $table->string('status')->default('Pending'); // Step 1 (Pending/Completed) [cite: 10]
-        $table->timestamps();
-    });
+    $table->id();
+    $table->foreignId('supplier_id')->constrained()->onDelete('cascade');
+    $table->string('supplier_name')->nullable();
+    $table->dateTime('purchase_date');
+    $table->decimal('total_cost', 10, 2); // Keep this one
+    $table->string('status')->default('Pending');
+    $table->timestamps();
+});
 }
 
     /**

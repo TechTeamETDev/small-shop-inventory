@@ -8,16 +8,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Purchase extends Model
 {
-    protected $fillable = [
-        'user_id',
-        'supplier_name',
-        'purchase_date',
-        'total_cost',
+ protected $fillable = [
+        'user_id', 
+        'supplier_id', 
+        'purchase_date', 
+        'total_cost', // This MUST be here to allow updates
         'status'
     ];
 
-    // One purchase has many items [cite: 60]
-    public function items(): HasMany
+    // ADD THIS RELATIONSHIP
+   public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function items()
     {
         return $this->hasMany(PurchaseItem::class);
     }
