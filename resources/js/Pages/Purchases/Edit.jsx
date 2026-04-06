@@ -2,17 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useForm, Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
-export default function Edit({ auth, purchase, categories }) {
-    // Initialize form with existing purchase data
+export default function Edit({ auth, purchase, categories, suppliers }) {
     const { data, setData, put, processing, errors } = useForm({
-        supplier_name: purchase.supplier_name || '',
-        // Formats date for the datetime-local input
+        supplier_id: purchase.supplier_id || '',
         purchase_date: purchase.purchase_date ? purchase.purchase_date.slice(0, 16) : '',
         status: purchase.status || 'Pending',
-        // Map items to include necessary fields for the table
         items: purchase.items.map(item => ({
-            product_id: item.product_id,
-            name: item.product.name,
+            id: item.product_id,
+            name: item.product?.name || 'Product',
+            category_id: item.product?.category_id, // Added to help populate category box
             quantity: item.quantity,
             unit_cost: item.unit_cost,
             subtotal: item.quantity * item.unit_cost
@@ -21,8 +19,9 @@ export default function Edit({ auth, purchase, categories }) {
 
     const [selectedCategory, setSelectedCategory] = useState('');
     const [availableProducts, setAvailableProducts] = useState([]);
-    const [tempItem, setTempItem] = useState({ product_id: '', name: '', quantity: 1, unit_cost: 0 });
+    const [tempItem, setTempItem] = useState({ id: '', name: '', quantity: 1, unit_cost: 0 });
 
+    // Fetch products when category changes
     useEffect(() => {
         if (selectedCategory) {
             fetch(`/purchases/get-products/${selectedCategory}`)
@@ -31,158 +30,205 @@ export default function Edit({ auth, purchase, categories }) {
         }
     }, [selectedCategory]);
 
-    const addItem = () => {
-        if (!tempItem.product_id || tempItem.quantity <= 0) return;
-        const subtotal = tempItem.quantity * tempItem.unit_cost;
-        setData('items', [...data.items, { ...tempItem, subtotal }]);
-        setTempItem({ product_id: '', name: '', quantity: 1, unit_cost: 0 });
-    };
-
-    const removeItem = (index) => {
+    const handleEditRow = (index) => {
+        const item = data.items[index];
+        
+        // 1. Set the category first (this triggers the useEffect above)
+        setSelectedCategory(item.category_id || '');
+        
+        // 2. Populate the editing boxes
+        setTempItem({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            unit_cost: item.unit_cost
+        });
+        
+        // 3. Remove from the current list so it can be "re-added"
         setData('items', data.items.filter((_, i) => i !== index));
     };
 
-    const totalCost = data.items.reduce((sum, item) => sum + parseFloat(item.subtotal), 0).toFixed(2);
+   const addItem = () => {
+    if (!tempItem.id || !tempItem.quantity) return;
+    
+    const subtotal = parseFloat(tempItem.quantity) * tempItem.unit_cost;
+    
+    // We add 'product_id' here so the array is consistent
+    setData('items', [...data.items, { 
+        ...tempItem, 
+        product_id: tempItem.id, 
+        subtotal, 
+        category_id: selectedCategory 
+    }]);
+    
+    setTempItem({ id: '', name: '', quantity: 1, unit_cost: 0 });
+};
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        // Use PUT for updating existing records
-        put(route('purchases.update', purchase.id));
+    const totalCost = data.items.reduce((sum, item) => sum + (parseFloat(item.subtotal) || 0), 0).toFixed(2);
+const handleSubmit = (e) => {
+    e.preventDefault();
+
+    // The key fix: We must map the items to ensure the backend receives 
+    // the 'product_id' key it's looking for at line 163.
+    const payload = {
+        ...data,
+        total_cost: totalCost, 
+        items: data.items.map(item => ({
+            // If the item has product_id use it, otherwise use id
+            product_id: item.product_id || item.id, 
+            quantity: item.quantity,
+            unit_cost: item.unit_cost
+        }))
     };
+
+    put(route('purchases.update', purchase.id), payload, {
+        onSuccess: () => console.log("Purchase #1 updated!"),
+        onError: (err) => console.error("Update failed", err),
+    });
+};
 
     return (
         <AuthenticatedLayout user={auth.user}>
-            <Head title={`Edit Purchase - ${purchase.supplier_name}`} />
-            
-            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-black text-gray-800">Edit Purchase #{purchase.id}</h2>
-                    <Link href={route('purchases.index')} className="text-gray-500 hover:text-gray-700 font-bold flex items-center gap-1">
-                        &larr; Back to List
+            <Head title="Edit Purchase" />
+            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
+                
+                <div className="mb-6 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900">Edit Purchase #{purchase.id}</h2>
+                        <p className="text-gray-500 text-xs">Update details for inventory restock.</p>
+                    </div>
+                    <Link href={route('purchases.index')} className="text-gray-400 hover:text-gray-600 text-sm font-medium">
+                        ← Back to List
                     </Link>
                 </div>
 
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* LEFT SECTION: ITEM MANAGEMENT */}
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                                <span className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                </span>
+                        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
+                                <div className="w-1.5 h-5 bg-blue-600 rounded-full"></div>
                                 Modify Items
                             </h3>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                                 <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Category</label>
-                                    <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="w-full border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-all">
+                                    <label className="text-[11px] font-bold text-black uppercase mb-2 block tracking-wider">1. Category</label>
+                                    <select 
+                                        value={selectedCategory} 
+                                        onChange={e => setSelectedCategory(e.target.value)} 
+                                        className="w-full border-gray-100 rounded-xl text-sm py-3 bg-gray-50/50 focus:ring-blue-500"
+                                    >
                                         <option value="">Select...</option>
                                         {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                                     </select>
                                 </div>
-                                
                                 <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Product</label>
+                                    <label className="text-[11px] font-bold text-black uppercase mb-2 block tracking-wider">2. Product</label>
                                     <select 
-                                        value={tempItem.product_id} 
+                                        value={tempItem.id} 
                                         onChange={e => {
                                             const p = availableProducts.find(x => x.id == e.target.value);
-                                            setTempItem({...tempItem, product_id: p.id, name: p.name, unit_cost: p.unit_buy_price});
-                                        }} 
-                                        className="w-full border-gray-200 rounded-xl disabled:bg-gray-50"
-                                        disabled={!selectedCategory}
+                                            if(p) setTempItem({...tempItem, id: p.id, name: p.name, unit_cost: p.unit_buy_price});
+                                        }}
+                                        className="w-full border-gray-100 rounded-xl text-sm py-3 bg-gray-50/50"
                                     >
-                                        <option value="">Choose...</option>
+                                        <option value="">{tempItem.id ? tempItem.name : 'Choose product'}</option>
                                         {availableProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                     </select>
                                 </div>
-
                                 <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Quantity</label>
-                                    <input type="number" value={tempItem.quantity} onChange={e => setTempItem({...tempItem, quantity: e.target.value})} className="w-full border-gray-200 rounded-xl" />
+                                    <label className="text-[11px] font-bold text-black uppercase mb-2 block tracking-wider">Quantity</label>
+                                    <input 
+                                        type="number" 
+                                        value={tempItem.quantity} 
+                                        onChange={e => setTempItem({...tempItem, quantity: parseInt(e.target.value) || 1})} 
+                                        className="w-full border-gray-100 rounded-xl text-sm py-3 bg-gray-50/50"
+                                    />
                                 </div>
-
-                                <button type="button" onClick={addItem} className="bg-blue-600 text-white font-bold py-2.5 rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
-                                    Add
+                                <button type="button" onClick={addItem} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-95 text-sm">
+                                    {tempItem.id ? 'Update' : 'Add Item'}
                                 </button>
                             </div>
                         </div>
 
-                        {/* ITEMS TABLE */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                             <table className="min-w-full">
-                                <thead className="bg-gray-50/50">
+                                <thead className="bg-gray-50/50 border-b border-gray-100">
                                     <tr>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">Product</th>
-                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase">Qty</th>
-                                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase">Subtotal</th>
-                                        <th className="px-6 py-4"></th>
+                                        <th className="px-8 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">Product Name</th>
+                                        <th className="px-8 py-5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">Qty</th>
+                                        <th className="px-8 py-5 text-right text-[11px] font-bold text-gray-400 uppercase tracking-widest">Subtotal</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {data.items.map((item, index) => (
-                                        <tr key={index} className="hover:bg-blue-50/30 transition-colors">
-                                            <td className="px-6 py-4 font-semibold text-gray-800">{item.name}</td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className="bg-gray-100 px-3 py-1 rounded-full text-sm font-bold">{item.quantity}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-black text-gray-900">ETB {item.subtotal.toFixed(2)}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button type="button" onClick={() => removeItem(index)} className="text-red-300 hover:text-red-600 transition-colors">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
-                                            </td>
+                                <tbody className="divide-y divide-gray-50">
+                                    {data.items.length > 0 ? (
+                                        data.items.map((item, index) => (
+                                            <tr key={index} className="hover:bg-blue-50/30 group transition-colors">
+                                                <td className="px-8 py-5 font-bold text-gray-700 text-sm">{item.name}</td>
+                                                <td className="px-8 py-5 text-center font-bold text-gray-500 text-sm">{item.quantity}</td>
+                                                <td className="px-8 py-5 text-right font-black text-gray-800 flex justify-end items-center gap-6">
+                                                    <span className="text-sm">ETB {parseFloat(item.subtotal).toLocaleString()}</span>
+                                                    <div className="flex gap-3">
+                                                        <button type="button" onClick={() => handleEditRow(index)} className="text-blue-500 hover:text-blue-700 text-xs font-bold uppercase tracking-tighter">Edit</button>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => setData('items', data.items.filter((_, i) => i !== index))} 
+                                                            className="text-red-300 hover:text-red-500 text-xs font-bold uppercase tracking-tighter"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="3" className="px-8 py-12 text-center text-gray-300 font-medium italic">No items in this purchase.</td>
                                         </tr>
-                                    ))}
+                                    )}
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
-                    {/* RIGHT SECTION: SETTINGS */}
                     <div className="space-y-6">
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 sticky top-6">
-                            <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2 border-b pb-4">
-                                Update Details
-                            </h3>
-
-                            <div className="space-y-4">
+                        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm sticky top-8">
+                            <h3 className="font-bold text-gray-900 mb-8 text-lg">Summary</h3>
+                            <div className="space-y-6">
                                 <div>
-                                    <label className="text-sm font-bold text-gray-600 block mb-2">Supplier</label>
-                                    <input type="text" value={data.supplier_name} onChange={e => setData('supplier_name', e.target.value)} className="w-full border-gray-200 rounded-xl" required />
-                                    {errors.supplier_name && <div className="text-red-500 text-xs mt-1">{errors.supplier_name}</div>}
+                                    <label className="text-[11px] font-bold text-black uppercase mb-2 block tracking-wider">Supplier</label>
+                                    <select value={data.supplier_id} onChange={e => setData('supplier_id', e.target.value)} className="w-full border-gray-100 rounded-xl text-sm py-3 bg-gray-50/50 focus:ring-blue-500 font-bold">
+                                        <option value="">Select Vendor</option>
+                                        {suppliers.map(sup => <option key={sup.id} value={sup.id}>{sup.name}</option>)}
+                                    </select>
+                                    {errors.supplier_id && <div className="text-red-500 text-[10px] mt-1 font-bold">{errors.supplier_id}</div>}
                                 </div>
 
                                 <div>
-                                    <label className="text-sm font-bold text-gray-600 block mb-2">Date</label>
-                                    <input type="datetime-local" value={data.purchase_date} onChange={e => setData('purchase_date', e.target.value)} className="w-full border-gray-200 rounded-xl" required />
+                                    <label className="text-[11px] font-bold text-black uppercase mb-2 block tracking-wider">Date</label>
+                                    <input type="datetime-local" value={data.purchase_date} onChange={e => setData('purchase_date', e.target.value)} className="w-full border-gray-100 rounded-xl text-sm py-3 bg-gray-50/50 focus:ring-blue-500" />
                                 </div>
 
                                 <div>
-                                    <label className="text-sm font-bold text-gray-600 block mb-2">Status</label>
-                                    <select value={data.status} onChange={e => setData('status', e.target.value)} className="w-full border-gray-200 rounded-xl">
+                                    <label className="text-[11px] font-bold text-black uppercase mb-2 block tracking-wider">Status</label>
+                                    <select value={data.status} onChange={e => setData('status', e.target.value)} className="w-full border-gray-100 rounded-xl text-sm py-3 bg-gray-50/50 focus:ring-blue-500 font-bold">
                                         <option value="Pending">Pending</option>
                                         <option value="Completed">Completed</option>
+                                        <option value="Cancelled">Cancelled</option>
                                     </select>
                                 </div>
 
-                                <div className="mt-8 pt-6 border-t border-dashed">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <span className="text-gray-400 font-medium">New Total</span>
+                                <div className="pt-8 mt-4 border-t border-gray-100">
+                                    <div className="flex justify-between items-center mb-8">
+                                        <span className="text-gray-400 font-bold text-[11px] uppercase tracking-widest">Total Amount</span>
                                         <span className="text-2xl font-black text-blue-600">ETB {totalCost}</span>
                                     </div>
-
                                     <button 
                                         type="submit" 
-                                        disabled={processing || data.items.length === 0}
-                                        className="w-full bg-green-600 hover:bg-green-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-green-100 transition-all active:scale-95 disabled:opacity-50"
+                                        disabled={processing || data.items.length === 0} 
+                                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-200 text-white font-black uppercase tracking-widest py-4 rounded-2xl transition-all shadow-lg shadow-blue-100 active:scale-95 text-[11px]"
                                     >
-                                        {processing ? 'Updating...' : 'Save Changes'}
+                                        {processing ? 'Saving...' : 'Update Purchase'}
                                     </button>
                                 </div>
                             </div>

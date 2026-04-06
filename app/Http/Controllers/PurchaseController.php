@@ -2,142 +2,215 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
-use App\Models\Product;
-use App\Models\Purchase;
-use App\Models\PurchaseItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use App\Models\Purchase;
+use App\Models\PurchaseItem;
+use App\Models\Product;
+use App\Models\Supplier; 
+use App\Models\Category;
+use Inertia\Inertia;
 
 class PurchaseController extends Controller
 {
-    // Step 51: View all purchases
-   public function index()
-{
-    // Fetch purchases from database [cite: 36]
-    $purchases = Purchase::with('user')->latest()->get(); 
-    
-    // Render the React component using Inertia
-    return inertia('Purchases/Index', [
-        'purchases' => $purchases
-    ]);
-}
+    public function index()
+    {
+        // Fetching with supplier to show names in the management list
+        $purchases = Purchase::with('supplier')
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-    // Step 6: Show the "Add Purchase" form
-   // app/Http/Controllers/PurchaseController.php
+        return Inertia::render('Purchases/Index', [
+            'purchases' => $purchases
+        ]);
+    }
 
-public function create()
-{
-    return inertia('Purchases/Create', [
-        'categories' => Category::all()
-    ]);
-}
+    public function create()
+    {
+        return Inertia::render('Purchases/Create', [
+            'products' => Product::all(),
+            'suppliers' => Supplier::all(),
+            'categories' => Category::all() 
+        ]);
+    }
 
-public function getProductsByCategory($categoryId)
+    public function getProductsByCategory($categoryId)
+    {
+        $products = Product::where('category_id', $categoryId)->get();
+        return response()->json($products);
+    }
+
+    public function store(Request $request)
+    {
+       $validated = $request->validate([
+            'supplier_id'   => 'required|exists:suppliers,id',
+            'purchase_date' => 'required|date',
+            'status'        => 'required|in:Pending,Completed',
+            'items'         => 'required|array|min:1',
+            'items.*.id'    => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $supplier = Supplier::find($request->supplier_id);
+
+            $purchase = Purchase::create([
+                'user_id'       => Auth::id(),
+                'supplier_id'   => $request->supplier_id,
+                'supplier_name' => $supplier->name ?? 'Unknown Supplier', 
+                'purchase_date' => $request->purchase_date,
+                'status'        => $request->status,
+                'total_cost'    => 0, 
+            ]);
+
+            $totalPurchaseCost = 0;
+
+            foreach ($request->items as $item) {
+                $product = Product::find($item['id']);
+                $unitCost = $item['unit_cost'] ?? $product->unit_buy_price ?? 0;
+                
+                $subtotal = $item['quantity'] * $unitCost;
+                $totalPurchaseCost += $subtotal;
+
+                PurchaseItem::create([
+                    'purchase_id' => $purchase->id,
+                    'product_id'  => $item['id'],
+                    'quantity'    => $item['quantity'],
+                    'unit_cost'   => $unitCost,
+                    'subtotal'    => $subtotal,
+                ]);
+
+                if ($request->status === 'Completed') {
+                    $product->increment('current_quantity', $item['quantity']);
+                }
+            }
+
+            $purchase->update(['total_cost' => $totalPurchaseCost]);
+
+            DB::commit();
+            return redirect()->route('purchases.index')->with('success', 'Purchase recorded successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Purchase Store Error: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Failed to save purchase: ' . $e->getMessage()]);
+        }
+    }
+
+    public function edit(Purchase $purchase)
+    {
+        $purchase->load(['items.product' => function ($query) {
+            $query->withTrashed();
+        }, 'supplier']);
+
+        return Inertia::render('Purchases/Edit', [ 
+            'purchase'   => $purchase,
+            'products'   => Product::all(), 
+            'suppliers'  => Supplier::all(),
+            'categories' => Category::all()
+        ]);
+    }
+
+    public function show(Purchase $purchase)
+    {
+        $purchase->load(['items.product', 'supplier']); 
+
+        return Inertia::render('Purchases/Show', [
+            'purchase' => $purchase
+        ]);
+    }
+
+ public function update(Request $request, Purchase $purchase)
 {
-    $products = Product::where('category_id', $categoryId)
-                       ->where('is_active', true)
-                       ->get();
-    return response()->json($products);
-}
-public function store(Request $request)
-{
-    // Validate the incoming data from your React form
+    // 1. Validate using the correct field name 'supplier_id'
     $request->validate([
-        'supplier_name' => 'required|string',
-        'purchase_date' => 'required|date',
-        'status' => 'required|in:Pending,Completed',
-        'items' => 'required|array|min:1',
-        'items.*.product_id' => 'required|exists:products,id',
-        'items.*.quantity' => 'required|integer|min:1',
-        'items.*.unit_cost' => 'required|numeric|min:0',
+        'supplier_id'   => 'required',
+        'purchase_date' => 'required',
+        'status'        => 'required',
+        'items'         => 'required|array|min:1',
     ]);
 
     try {
         DB::beginTransaction();
 
-        // 1. Create the Purchase (Step 5)
-        $purchase = Purchase::create([
-            'user_id' => Auth::id(),
-            'supplier_name' => $request->supplier_name,
-            'purchase_date' => $request->purchase_date,
-            'status' => $request->status,
-            'total_cost' => 0, // We will update this after calculating subtotals
-        ]);
-
-        $totalPurchaseCost = 0;
-
-        foreach ($request->items as $item) {
-            $subtotal = $item['quantity'] * $item['unit_cost']; // Step 29
-            $totalPurchaseCost += $subtotal;
-
-            // 2. Save each item (Step 5)
-            PurchaseItem::create([
-                'purchase_id' => $purchase->id,
-                'product_id' => $item['product_id'],
-                'quantity' => $item['quantity'],
-                'unit_cost' => $item['unit_cost'],
-                'subtotal' => $subtotal,
-            ]);
-
-            // 3. Update Inventory ONLY if status is Completed (Step 6)
-            if ($request->status === 'Completed') {
-                $product = Product::find($item['product_id']);
-                // new_quantity = current_quantity + purchased_quantity
-                $product->increment('current_quantity', $item['quantity']); //
+        // --- STEP A: REVERSE OLD STOCK ---
+        // Before deleting the old items, subtract their quantities from the products
+        foreach ($purchase->items as $oldItem) {
+            $product = \App\Models\Product::find($oldItem->product_id);
+            if ($product) {
+                $product->decrement('current_quantity', $oldItem->quantity);
             }
         }
 
-        // Update the final total cost (Step 33)
-        $purchase->update(['total_cost' => $totalPurchaseCost]);
+        $calculatedTotal = 0;
+
+        // 2. Clear old items and recreate new ones
+        $purchase->items()->delete();
+
+        foreach ($request->items as $item) {
+            $qty = (int)$item['quantity'];
+            $cost = (float)($item['unit_cost'] ?? 0);
+            $subtotal = $qty * $cost;
+            $calculatedTotal += $subtotal;
+
+            $productId = $item['id'] ?? $item['product_id'];
+
+            $purchase->items()->create([
+                'product_id' => $productId,
+                'quantity'   => $qty,
+                'unit_cost'  => $cost,
+                'subtotal'   => $subtotal,
+            ]);
+
+            // --- STEP B: APPLY NEW STOCK ---
+            // Add the new quantities to the products
+            $product = \App\Models\Product::find($productId);
+            if ($product) {
+                $product->increment('current_quantity', $qty);
+            }
+        }
+
+        // 3. THE FORCE SAVE LOGIC
+        $purchase->supplier_id   = $request->supplier_id;
+        $purchase->purchase_date = $request->purchase_date;
+        $purchase->status        = $request->status;
+        $purchase->total_cost    = $calculatedTotal; 
+
+        $purchase->save(); 
 
         DB::commit();
 
         return redirect()->route('purchases.index')
-            ->with('success', 'Purchase recorded successfully.');
+            ->with('success', 'Purchase updated to ETB ' . number_format($calculatedTotal, 2));
 
     } catch (\Exception $e) {
         DB::rollback();
-        return back()->with('error', 'Something went wrong: ' . $e->getMessage());
+        \Log::error('Purchase Update Failed: ' . $e->getMessage());
+        return back()->withErrors(['error' => 'Database error: ' . $e->getMessage()]);
     }
 }
-public function show($id)
+public function destroy(Purchase $purchase)
 {
-    // Fetch the purchase along with its items and the related products
-    $purchase = Purchase::with(['user', 'items.product'])->findOrFail($id);
+    try {
+        DB::beginTransaction();
 
-    return inertia('Purchases/Show', [
-        'purchase' => $purchase
-    ]);
-}
-public function edit(Purchase $purchase)
-{
-    // Load categories for the dropdown and items for the table
-    return inertia('Purchases/Edit', [
-        'purchase' => $purchase->load('items.product'),
-        'categories' => Category::all(),
-    ]);
-}
+        // 1. Delete all associated items first to maintain integrity
+        $purchase->items()->delete();
 
-public function update(Request $request, Purchase $purchase)
-{
-    $request->validate([
-        'supplier_name' => 'required',
-        'purchase_date' => 'required',
-        'status' => 'required',
-        'items' => 'required|array',
-    ]);
+        // 2. Delete the main purchase record
+        $purchase->delete();
 
-    // Update main purchase info
-    $purchase->update($request->only('supplier_name', 'purchase_date', 'status'));
+        DB::commit();
 
-    // Sync items: Delete old ones and re-add (simplest for demos)
-    $purchase->items()->delete();
-    foreach ($request->items as $item) {
-        $purchase->items()->create($item);
+        return redirect()->route('purchases.index')->with('success', 'Purchase deleted successfully.');
+    } catch (\Exception $e) {
+        DB::rollback();
+        \Log::error('Purchase Delete Error: ' . $e->getMessage());
+        return back()->withErrors(['error' => 'Failed to delete purchase.']);
     }
-
-    return redirect()->route('purchases.index');
 }
 }
