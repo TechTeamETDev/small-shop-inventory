@@ -43,64 +43,67 @@ class PurchaseController extends Controller
     }
 
     public function store(Request $request)
-    {
-       $validated = $request->validate([
-            'supplier_id'   => 'required|exists:suppliers,id',
-            'purchase_date' => 'required|date',
-            'status'        => 'required|in:Pending,Completed',
-            'items'         => 'required|array|min:1',
-            'items.*.id'    => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
+{
+    // 1. Remove 'status' from validation since we are hardcoding it
+    $validated = $request->validate([
+        'supplier_id'   => 'required|exists:suppliers,id',
+        'purchase_date' => 'required|date',
+        // 'status' is removed from here
+        'items'         => 'required|array|min:1',
+        'items.*.id'    => 'required|exists:products,id',
+        'items.*.quantity' => 'required|integer|min:1',
+        'items.*.unit_cost' => 'nullable|numeric|min:0', // Added this just in case
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        $supplier = Supplier::find($request->supplier_id);
+
+        $purchase = Purchase::create([
+            'user_id'       => Auth::id(),
+            'supplier_id'   => $request->supplier_id,
+            'supplier_name' => $supplier->name ?? 'Unknown Supplier', 
+            'purchase_date' => $request->purchase_date,
+            'status'        => 'Completed', // 2. Hardcoded: Now every purchase is 'Completed' by default
+            'total_cost'    => 0, 
         ]);
 
-        try {
-            DB::beginTransaction();
+        $totalPurchaseCost = 0;
 
-            $supplier = Supplier::find($request->supplier_id);
+        foreach ($request->items as $item) {
+            $product = Product::find($item['id']);
+            
+            // Use provided unit cost or fall back to product's buy price
+            $unitCost = $item['unit_cost'] ?? $product->unit_buy_price ?? 0;
+            
+            $subtotal = $item['quantity'] * $unitCost;
+            $totalPurchaseCost += $subtotal;
 
-            $purchase = Purchase::create([
-                'user_id'       => Auth::id(),
-                'supplier_id'   => $request->supplier_id,
-                'supplier_name' => $supplier->name ?? 'Unknown Supplier', 
-                'purchase_date' => $request->purchase_date,
-                'status'        => $request->status,
-                'total_cost'    => 0, 
+            PurchaseItem::create([
+                'purchase_id' => $purchase->id,
+                'product_id'  => $item['id'],
+                'quantity'    => $item['quantity'],
+                'unit_cost'   => $unitCost,
+                'subtotal'    => $subtotal,
             ]);
 
-            $totalPurchaseCost = 0;
-
-            foreach ($request->items as $item) {
-                $product = Product::find($item['id']);
-                $unitCost = $item['unit_cost'] ?? $product->unit_buy_price ?? 0;
-                
-                $subtotal = $item['quantity'] * $unitCost;
-                $totalPurchaseCost += $subtotal;
-
-                PurchaseItem::create([
-                    'purchase_id' => $purchase->id,
-                    'product_id'  => $item['id'],
-                    'quantity'    => $item['quantity'],
-                    'unit_cost'   => $unitCost,
-                    'subtotal'    => $subtotal,
-                ]);
-
-                if ($request->status === 'Completed') {
-                    $product->increment('current_quantity', $item['quantity']);
-                }
-            }
-
-            $purchase->update(['total_cost' => $totalPurchaseCost]);
-
-            DB::commit();
-            return redirect()->route('purchases.index')->with('success', 'Purchase recorded successfully.');
-
-        } catch (\Exception $e) {
-            DB::rollback();
-            Log::error('Purchase Store Error: ' . $e->getMessage());
-            return back()->withErrors(['error' => 'Failed to save purchase: ' . $e->getMessage()]);
+            // 3. Removed the "if status === Completed" check.
+            // Since everything is 'Completed', stock always updates automatically.
+            $product->increment('current_quantity', $item['quantity']);
         }
-    }
 
+        $purchase->update(['total_cost' => $totalPurchaseCost]);
+
+        DB::commit();
+        return redirect()->route('purchases.index')->with('success', 'Purchase recorded and stock updated automatically.');
+
+    } catch (\Exception $e) {
+        DB::rollback();
+        Log::error('Purchase Store Error: ' . $e->getMessage());
+        return back()->withErrors(['error' => 'Failed to save purchase: ' . $e->getMessage()]);
+    }
+}
     public function edit(Purchase $purchase)
     {
         $purchase->load(['items.product' => function ($query) {
@@ -195,22 +198,36 @@ class PurchaseController extends Controller
 }
 public function destroy(Purchase $purchase)
 {
+    // Safety check: Don't process if already cancelled
+    if ($purchase->status === 'Cancelled') {
+        return back()->withErrors(['error' => 'This purchase is already cancelled.']);
+    }
+
     try {
         DB::beginTransaction();
 
-        // 1. Delete all associated items first to maintain integrity
-        $purchase->items()->delete();
+        // 1. Loop through items and REVERSE the stock increment
+        foreach ($purchase->items as $item) {
+            $product = Product::find($item->product_id);
+            if ($product) {
+                // Since 'Completed' added stock, 'Cancelled' must remove it
+                $product->decrement('current_quantity', $item->quantity);
+            }
+        }
 
-        // 2. Delete the main purchase record
-        $purchase->delete();
+        // 2. Update status to 'Cancelled' instead of deleting the record
+        $purchase->update([
+            'status' => 'Cancelled'
+        ]);
 
         DB::commit();
 
-        return redirect()->route('purchases.index')->with('success', 'Purchase deleted successfully.');
+        return redirect()->route('purchases.index')->with('success', 'Purchase cancelled and stock reversed successfully.');
+
     } catch (\Exception $e) {
         DB::rollback();
-        \Log::error('Purchase Delete Error: ' . $e->getMessage());
-        return back()->withErrors(['error' => 'Failed to delete purchase.']);
+        \Log::error('Purchase Cancellation Error: ' . $e->getMessage());
+        return back()->withErrors(['error' => 'Failed to cancel purchase: ' . $e->getMessage()]);
     }
 }
 }

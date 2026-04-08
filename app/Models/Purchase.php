@@ -11,6 +11,7 @@ class Purchase extends Model
  protected $fillable = [
         'user_id', 
         'supplier_id', 
+        'supplier_name',
         'purchase_date', 
         'total_cost', // This MUST be here to allow updates
         'status'

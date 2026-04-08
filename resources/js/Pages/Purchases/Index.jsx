@@ -6,7 +6,7 @@ export default function Index({ auth, purchases }) {
     const { delete: destroy } = useForm();
 
     const handleDelete = (id) => {
-        if (confirm('Are you sure you want to delete this purchase record?')) {
+        if (confirm('Are you sure you want to cancel this purchase and reverse the stock?')) {
             destroy(route('purchases.destroy', id));
         }
     };
@@ -35,11 +35,15 @@ export default function Index({ auth, purchases }) {
                     {/* HEADER SECTION */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                         <div className="flex items-center gap-4">
-                            <Link href={route('dashboard')} className="bg-white p-3 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center shadow-sm border border-gray-200">
-                                <span className="text-black text-lg font-black">←</span>
-                            </Link>
+                            <Link 
+    href={route('dashboard')} 
+    className="bg-black p-3 rounded-xl hover:bg-gray-800 transition-all flex items-center justify-center shadow-sm border border-black"
+>
+    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+    </svg>
+</Link>
                             <div>
-                                {/* UPDATED: Main Title to Bold Black */}
                                 <h1 className="text-3xl font-extrabold text-black tracking-tight">Purchase Management</h1>
                                 <p className="text-slate-500 font-medium text-sm">Track and manage supply orders.</p>
                             </div>
@@ -57,7 +61,6 @@ export default function Index({ auth, purchases }) {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-gray-200">
-                                    {/* UPDATED: Table Headers to Font Black and Bold */}
                                     <th className="px-6 py-5 text-[11px] font-black text-black uppercase tracking-widest">Supplier</th>
                                     <th className="px-6 py-5 text-[11px] font-black text-black uppercase tracking-widest">Date</th>
                                     <th className="px-6 py-5 text-[11px] font-black text-black uppercase tracking-widest">Total Amount</th>
@@ -68,13 +71,11 @@ export default function Index({ auth, purchases }) {
                             <tbody className="divide-y divide-gray-100">
                                 {purchases && purchases.length > 0 ? (
                                     purchases.map((purchase) => (
-                                        <tr key={purchase.id} className="hover:bg-slate-50/50 transition-colors group">
+                                        <tr key={purchase.id} className="hover:bg-slate-50/50 transition-colors">
                                             <td className="px-6 py-5">
-                                                {/* UPDATED: Supplier Name to Black */}
                                                 <div className="font-bold text-black text-sm">
                                                     {purchase.supplier?.name || 'Unknown Supplier'}
                                                 </div>
-                                                
                                             </td>
                                             <td className="px-6 py-5 text-sm text-slate-700 font-bold">
                                                 {new Date(purchase.purchase_date).toLocaleDateString('en-US', {
@@ -96,22 +97,28 @@ export default function Index({ auth, purchases }) {
                                                 <div className="flex justify-end items-center gap-4">
                                                     <Link 
                                                         href={route('purchases.show', purchase.id)} 
-                                                        className="text-slate-400 hover:text-black font-black text-xs transition-colors uppercase tracking-tighter"
+                                                        className="text-blue-600 hover:text-blue-800 font-black text-[10px] transition-colors uppercase tracking-widest"
                                                     >
                                                         View
                                                     </Link>
-                                                    <Link 
-                                                        href={route('purchases.edit', purchase.id)} 
-                                                        className="text-slate-400 hover:text-blue-600 font-black text-xs transition-colors uppercase tracking-tighter"
-                                                    >
-                                                        Edit
-                                                    </Link>
-                                                    <button 
-                                                        onClick={() => handleDelete(purchase.id)}
-                                                        className="text-slate-300 hover:text-red-600 font-black text-xs transition-colors uppercase tracking-tighter"
-                                                    >
-                                                        Delete
-                                                    </button>
+                                                    
+                                                    {/* Only allow Edit/Delete if the purchase isn't already Cancelled */}
+                                                    {purchase.status?.toLowerCase() !== 'cancelled' && (
+                                                        <>
+                                                            <Link 
+                                                                href={route('purchases.edit', purchase.id)} 
+                                                                className="text-amber-600 hover:text-amber-800 font-black text-[10px] transition-colors uppercase tracking-widest"
+                                                            >
+                                                                Edit
+                                                            </Link>
+                                                            <button 
+                                                                onClick={() => handleDelete(purchase.id)}
+                                                                className="text-red-600 hover:text-red-800 font-black text-[10px] transition-colors uppercase tracking-widest"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>

@@ -5,12 +5,11 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function Create({ auth, categories, suppliers, purchase }) {
     const { data, setData, post, put, processing, errors } = useForm({
-        // 1. Matches Controller's 'supplier_id'
         supplier_id: purchase ? purchase.supplier_id : '', 
         purchase_date: purchase ? purchase.purchase_date : new Date().toISOString().slice(0, 16),
-        status: purchase ? purchase.status : 'Pending',
+        // REMOVED: status key is no longer needed here
         items: purchase ? purchase.items.map(item => ({
-            id: item.product_id, // Ensure we send ID to Controller
+            id: item.product_id, 
             name: item.product.name,
             quantity: item.quantity,
             unit_cost: item.unit_cost,
@@ -20,8 +19,6 @@ export default function Create({ auth, categories, suppliers, purchase }) {
 
     const [selectedCategory, setSelectedCategory] = useState('');
     const [availableProducts, setAvailableProducts] = useState([]);
-    
-    // Quantity set to empty string to prevent the "sticky 1" bug
     const [tempItem, setTempItem] = useState({ id: '', name: '', quantity: '', unit_cost: 0 });
 
     useEffect(() => {
@@ -35,13 +32,9 @@ export default function Create({ auth, categories, suppliers, purchase }) {
     }, [selectedCategory]);
 
     const addItem = () => {
-        // Validation: ensures quantity is a valid number before adding
         if (!tempItem.id || !tempItem.quantity || tempItem.quantity <= 0) return;
-        
         const subtotal = tempItem.quantity * tempItem.unit_cost;
         setData('items', [...data.items, { ...tempItem, subtotal }]);
-        
-        // Reset to clean state
         setTempItem({ id: '', name: '', quantity: '', unit_cost: 0 });
     };
 
@@ -53,8 +46,6 @@ export default function Create({ auth, categories, suppliers, purchase }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
-        // We explicitly add total_cost to the object before sending
         const payload = { ...data, total_cost: total_cost };
 
         if (purchase) {
@@ -197,13 +188,7 @@ export default function Create({ auth, categories, suppliers, purchase }) {
                                     <input type="datetime-local" value={data.purchase_date} onChange={e => setData('purchase_date', e.target.value)} className="w-full border-gray-200 rounded-xl" required />
                                 </div>
 
-                                <div>
-                                    <label className="text-sm font-bold text-gray-600 block mb-2">Status</label>
-                                    <select value={data.status} onChange={e => setData('status', e.target.value)} className="w-full border-gray-200 rounded-xl">
-                                        <option value="Pending">Pending</option>
-                                        <option value="Completed">Completed</option>
-                                    </select>
-                                </div>
+                                {/* REMOVED: Status selection dropdown is gone */}
 
                                 <div className="mt-8 pt-6 border-t border-dashed">
                                     <div className="flex justify-between items-center mb-6">
