@@ -7,9 +7,38 @@ export default function Create({ products }) {
     const permissions = auth?.user?.permissions || [];
     const can = (permission) => permissions.includes(permission);
 
+    // Safe default for initial render
     const [items, setItems] = useState([
         { product_id: "", quantity: 1, unit_price: 0 },
     ]);
+
+    // Auto-fill first product once products are loaded
+    useEffect(() => {
+        if (products.length && !items[0].product_id) {
+            const firstProduct = products[0];
+            setItems([
+                {
+                    product_id: firstProduct.id,
+                    quantity: 1,
+                    unit_price: Number(firstProduct.unit_sell_price),
+                },
+            ]);
+        }
+    }, [products]);
+
+    // Auto-fill first product once `products` is loaded
+    useEffect(() => {
+        if (products.length && !items[0].product_id) {
+            const firstProduct = products[0];
+            setItems([
+                {
+                    product_id: firstProduct.id,
+                    quantity: 1,
+                    unit_price: Number(firstProduct.unit_sell_price),
+                },
+            ]);
+        }
+    }, [products]);
     const [selectedProducts, setSelectedProducts] = useState({});
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -21,11 +50,6 @@ export default function Create({ products }) {
     });
 
     // Auto-select first product if available
-    useEffect(() => {
-        if (products.length && !items[0].product_id) {
-            updateItem(0, "product_id", products[0].id);
-        }
-    }, [products]);
 
     // Add new item row
     const addItem = () =>
@@ -71,28 +95,21 @@ export default function Create({ products }) {
     const submit = (e) => {
         e.preventDefault();
 
-        // Prepare items for submission
+        // Filter out items without a product
         const saleItems = items
-            .filter((item) => item.product_id) // only remove completely empty product_id
+            .filter((item) => item.product_id)
             .map((item) => ({
                 product_id: Number(item.product_id),
                 quantity: Number(item.quantity) || 1,
                 unit_price: Number(item.unit_price) || 0,
             }));
 
-        if (saleItems.length === 0) {
+        if (!saleItems.length) {
             alert("⚠️ Please select at least one product.");
             return;
         }
 
-        if (!saleItems.length) {
-            alert(
-                "⚠️ Please add at least one item with a selected product and quantity > 0",
-            );
-            return;
-        }
-
-        // Update useForm data
+        // Update form data
         setData({
             customer_name: data.customer_name,
             customer_phone: data.customer_phone,
@@ -104,19 +121,8 @@ export default function Create({ products }) {
             ),
         });
 
-        // Submit to backend
+        // Submit form — do NOT wrap in data:
         post(route("sales.store"), {
-            data: {
-                customer_name: data.customer_name,
-                customer_phone: data.customer_phone,
-                payment_method: data.payment_method,
-                items: saleItems,
-                total_amount: saleItems.reduce(
-                    (sum, i) => sum + i.quantity * i.unit_price,
-                    0,
-                ),
-            },
-            preserveScroll: true,
             onSuccess: () => {
                 reset();
                 setItems([{ product_id: "", quantity: 1, unit_price: 0 }]);
@@ -132,7 +138,6 @@ export default function Create({ products }) {
             },
         });
     };
-
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-5xl mx-auto px-4 py-8">
