@@ -2,6 +2,7 @@ import { useForm, usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 
 export default function Index() {
+    // initialProducts comes directly from your Laravel controller
     const { products: initialProducts, categories, auth } = usePage().props;
     const permissions = auth?.user?.permissions || [];
     const [search, setSearch] = useState("");
@@ -26,54 +27,38 @@ export default function Index() {
         min_stock_level: 0,
     });
 
-    // --- Products state including unsaved products
-    const [products, setProducts] = useState(() => {
-        const unsaved = JSON.parse(
-            localStorage.getItem("unsaved_forms") || "{}",
-        );
-        const localProduct = unsaved.product;
-        if (localProduct && localProduct.name) {
-            return [localProduct, ...initialProducts];
-        }
-        return initialProducts;
-    });
+    // --- 1. THE TABLE STATE ---
+    // We only use the data from the database now. 
+    // This stops "yes water" from appearing if the DB is empty.
+    const [products, setProducts] = useState(initialProducts);
 
-    // --- Load unsaved product into form if exists
+    // --- 2. SYNC WITH DATABASE ---
+    // When you Add/Delete, Inertia refreshes initialProducts. 
+    // This effect ensures your table updates instantly.
     useEffect(() => {
-        const unsaved = JSON.parse(
-            localStorage.getItem("unsaved_forms") || "{}",
-        );
+        setProducts(initialProducts);
+    }, [initialProducts]);
+
+    // --- 3. FORM RECOVERY ---
+    // This loads your typed text back into the FORM inputs if you refresh, 
+    // but it DOES NOT touch the product table.
+    useEffect(() => {
+        const unsaved = JSON.parse(localStorage.getItem("unsaved_forms") || "{}");
         if (unsaved.product) {
             setData(unsaved.product);
         }
     }, []);
 
-    // --- Submit (Add or Update)
+    // --- 4. SUBMIT (ADD OR UPDATE) ---
     function submit(e) {
         e.preventDefault();
 
         const options = {
-            onSuccess: (page) => {
-                if (editingId) {
-                    // Update local products
-                    setProducts((prev) =>
-                        prev.map((p) =>
-                            p.id === editingId ? { ...p, ...data } : p,
-                        ),
-                    );
-                } else {
-                    // Add new product
-                    setProducts((prev) => [data, ...prev]);
-                }
-
+            onSuccess: () => {
                 reset();
                 setEditingId(null);
-                // Remove auto-saved data
-                const unsaved = JSON.parse(
-                    localStorage.getItem("unsaved_forms") || "{}",
-                );
-                delete unsaved.product;
-                localStorage.setItem("unsaved_forms", JSON.stringify(unsaved));
+                // Clear the ghost memory only after a successful save
+                localStorage.removeItem("unsaved_forms");
             },
             onError: (errors) => console.error("Failed to save:", errors),
         };
@@ -83,9 +68,11 @@ export default function Index() {
         } else {
             post("/products", options);
         }
+        // Note: We no longer manually push to 'products' state.
+        // Inertia redirects and refreshes the list for us automatically.
     }
 
-    // --- Edit
+    // --- 5. EDIT ---
     function editProduct(product) {
         setEditingId(product.id);
         setData({
@@ -99,33 +86,29 @@ export default function Index() {
         });
     }
 
-    // --- Delete
+    // --- 6. DELETE ---
     function deleteProduct(id) {
         if (!confirm("Delete this product?")) return;
         destroy(`/products/${id}`, {
             onSuccess: () => {
-                // Remove from local products array
-                setProducts((prev) => prev.filter((p) => p.id !== id));
+                // Inertia refreshes initialProducts, which triggers our useEffect
             },
             onError: (errors) => console.error("Failed to delete:", errors),
         });
     }
 
-    // --- Auto-save form to localStorage
+    // --- 7. AUTO-SAVE FORM TO LOCALSTORAGE ---
     useEffect(() => {
         const handleBeforeUnload = () => {
             if (data.name) {
-                const unsaved = JSON.parse(
-                    localStorage.getItem("unsaved_forms") || "{}",
-                );
+                const unsaved = JSON.parse(localStorage.getItem("unsaved_forms") || "{}");
                 unsaved.product = data;
                 localStorage.setItem("unsaved_forms", JSON.stringify(unsaved));
             }
         };
 
         window.addEventListener("beforeunload", handleBeforeUnload);
-        return () =>
-            window.removeEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
     }, [data]);
 
     return (
@@ -134,10 +117,7 @@ export default function Index() {
 
             {/* Form */}
             {can("create products") && (
-                <form
-                    onSubmit={submit}
-                    className="bg-white p-5 rounded-lg shadow mb-6"
-                >
+                <form onSubmit={submit} className="bg-white p-5 rounded-lg shadow mb-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         <input
                             placeholder="Product name"
@@ -153,52 +133,40 @@ export default function Index() {
                         />
                         <select
                             value={data.category_id}
-                            onChange={(e) =>
-                                setData("category_id", e.target.value)
-                            }
+                            onChange={(e) => setData("category_id", e.target.value)}
                             className="border rounded-lg p-2"
                         >
                             <option value="">Select Category</option>
                             {categories.map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                    {cat.name}
-                                </option>
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
                             ))}
                         </select>
                         <input
                             type="number"
                             placeholder="Buy Price (ETB)"
                             value={data.unit_buy_price}
-                            onChange={(e) =>
-                                setData("unit_buy_price", e.target.value)
-                            }
+                            onChange={(e) => setData("unit_buy_price", e.target.value)}
                             className="border rounded-lg p-2"
                         />
                         <input
                             type="number"
                             placeholder="Sell Price (ETB)"
                             value={data.unit_sell_price}
-                            onChange={(e) =>
-                                setData("unit_sell_price", e.target.value)
-                            }
+                            onChange={(e) => setData("unit_sell_price", e.target.value)}
                             className="border rounded-lg p-2"
                         />
                         <input
                             type="number"
                             placeholder="Quantity"
                             value={data.current_quantity}
-                            onChange={(e) =>
-                                setData("current_quantity", e.target.value)
-                            }
+                            onChange={(e) => setData("current_quantity", e.target.value)}
                             className="border rounded-lg p-2"
                         />
                         <input
                             type="number"
                             placeholder="Min Stock"
                             value={data.min_stock_level}
-                            onChange={(e) =>
-                                setData("min_stock_level", e.target.value)
-                            }
+                            onChange={(e) => setData("min_stock_level", e.target.value)}
                             className="border rounded-lg p-2"
                         />
                     </div>
@@ -206,10 +174,7 @@ export default function Index() {
                         {editingId && (
                             <button
                                 type="button"
-                                onClick={() => {
-                                    reset();
-                                    setEditingId(null);
-                                }}
+                                onClick={() => { reset(); setEditingId(null); }}
                                 className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
                             >
                                 Cancel
@@ -241,87 +206,40 @@ export default function Index() {
                             <th className="px-4 py-3 text-left">Stock</th>
                             <th className="px-4 py-3 text-left">Buy (ETB)</th>
                             <th className="px-4 py-3 text-left">Sell (ETB)</th>
-                            {(can("edit products") ||
-                                can("delete products")) && (
-                                <th className="px-4 py-3 text-center">
-                                    Actions
-                                </th>
+                            {(can("edit products") || can("delete products")) && (
+                                <th className="px-4 py-3 text-center">Actions</th>
                             )}
                         </tr>
                     </thead>
                     <tbody>
                         {products
-                            .filter((p) =>
-                                p.name
-                                    .toLowerCase()
-                                    .includes(search.toLowerCase()),
-                            )
-                            .map((p, index) => {
-                                const lowStock =
-                                    p.current_quantity <= p.min_stock_level;
+                            .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+                            .map((p) => {
+                                const lowStock = p.current_quantity <= p.min_stock_level;
                                 return (
-                                    <tr
-                                        key={p.id || index}
-                                        className={`border-b ${lowStock ? "bg-red-50" : ""}`}
-                                    >
-                                        <td className="px-4 py-3 font-medium">
-                                            {p.name}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {p.category?.name || "-"}
-                                        </td>
+                                    <tr key={p.id} className={`border-b ${lowStock ? "bg-red-50" : ""}`}>
+                                        <td className="px-4 py-3 font-medium">{p.name}</td>
+                                        <td className="px-4 py-3">{p.category?.name || "-"}</td>
                                         <td className="px-4 py-3">
                                             {p.current_quantity}
-                                            {lowStock && (
-                                                <span className="ml-2 text-xs text-red-600">
-                                                    ⚠ Low
-                                                </span>
+                                            {lowStock && <span className="ml-2 text-xs text-red-600">⚠ Low</span>}
+                                        </td>
+                                        <td className="px-4 py-3">{p.unit_buy_price}</td>
+                                        <td className="px-4 py-3 font-semibold">{p.unit_sell_price}</td>
+                                        <td className="px-4 py-3 text-center space-x-2">
+                                            {can("edit products") && (
+                                                <button onClick={() => editProduct(p)} className="text-blue-600 hover:text-blue-800">Edit</button>
+                                            )}
+                                            {can("delete products") && (
+                                                <button onClick={() => deleteProduct(p.id)} className="text-red-600 hover:text-red-800">Delete</button>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3">
-                                            {p.unit_buy_price}
-                                        </td>
-                                        <td className="px-4 py-3 font-semibold">
-                                            {p.unit_sell_price}
-                                        </td>
-                                        {(can("edit products") ||
-                                            can("delete products")) && (
-                                            <td className="px-4 py-3 text-center space-x-2">
-                                                {can("edit products") && (
-                                                    <button
-                                                        onClick={() =>
-                                                            editProduct(p)
-                                                        }
-                                                        className="text-blue-600 hover:text-blue-800"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                )}
-                                                {can("delete products") && (
-                                                    <button
-                                                        onClick={() =>
-                                                            deleteProduct(p.id)
-                                                        }
-                                                        className="text-red-600 hover:text-red-800"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                )}
-                                            </td>
-                                        )}
                                     </tr>
                                 );
                             })}
-                        {products.filter((p) =>
-                            p.name.toLowerCase().includes(search.toLowerCase()),
-                        ).length === 0 && (
+                        {products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).length === 0 && (
                             <tr>
-                                <td
-                                    colSpan="6"
-                                    className="px-4 py-8 text-center text-gray-500"
-                                >
-                                    No products found
-                                </td>
+                                <td colSpan="6" className="px-4 py-8 text-center text-gray-500">No products found</td>
                             </tr>
                         )}
                     </tbody>
