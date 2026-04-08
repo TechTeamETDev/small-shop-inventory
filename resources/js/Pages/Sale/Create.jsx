@@ -109,7 +109,7 @@ export default function Create({ products }) {
             return;
         }
 
-        // Update form data
+        // Update data
         setData({
             customer_name: data.customer_name,
             customer_phone: data.customer_phone,
