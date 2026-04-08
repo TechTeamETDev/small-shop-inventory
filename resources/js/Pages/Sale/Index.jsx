@@ -62,12 +62,13 @@ export default function Index({ sales }) {
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        ID
-                                    </th>
+                                
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Customer
                                     </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Phone
+        </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Total
                                     </th>
@@ -90,12 +91,13 @@ export default function Index({ sales }) {
                                 {sales.data.length > 0 ? (
                                     sales.data.map((sale) => (
                                         <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                #{sale.id}
-                                            </td>
+                                            
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {sale.customer_name || "Walk-in Customer"}
                                             </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {sale.customer_phone || <span className="text-gray-300">N/A</span>}
+            </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                                 Br {parseFloat(sale.total_amount).toFixed(2)}
                                             </td>

@@ -10,11 +10,13 @@ class Sale extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
-        'total_amount',
-        'payment_method',
+       'user_id', 
+        'customer_name',
+        'customer_phone', 
+        'total_amount', 
+        'payment_method', 
         'sale_date',
-        'status',
+        'status'
     ];
 
     protected $casts = [
