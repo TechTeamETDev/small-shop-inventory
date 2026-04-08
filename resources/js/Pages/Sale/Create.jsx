@@ -1,5 +1,5 @@
 import { useForm, usePage } from "@inertiajs/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "@inertiajs/react";
 
 export default function Create({ products }) {
@@ -19,6 +19,13 @@ export default function Create({ products }) {
         items: [],
         total_amount: 0,
     });
+
+    // Auto-select first product if available
+    useEffect(() => {
+        if (products.length && !items[0].product_id) {
+            updateItem(0, "product_id", products[0].id);
+        }
+    }, [products]);
 
     // Add new item row
     const addItem = () =>
@@ -53,28 +60,30 @@ export default function Create({ products }) {
         setItems(newItems);
     };
 
-    // Calculate subtotal for an item
     const calculateSubtotal = (item) =>
         (item.quantity * item.unit_price).toFixed(2);
 
-    // Calculate grand total
     const calculateTotal = () =>
         items
             .reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
             .toFixed(2);
 
-    // Submit sale
     const submit = (e) => {
         e.preventDefault();
 
         // Prepare items for submission
         const saleItems = items
-            .filter((item) => item.product_id && item.quantity > 0)
+            .filter((item) => item.product_id) // only remove completely empty product_id
             .map((item) => ({
                 product_id: Number(item.product_id),
-                quantity: Number(item.quantity),
-                unit_price: Number(item.unit_price),
+                quantity: Number(item.quantity) || 1,
+                unit_price: Number(item.unit_price) || 0,
             }));
+
+        if (saleItems.length === 0) {
+            alert("⚠️ Please select at least one product.");
+            return;
+        }
 
         if (!saleItems.length) {
             alert(
@@ -82,45 +91,51 @@ export default function Create({ products }) {
             );
             return;
         }
-        // Post to backend
 
-        post(
-            route("sales.store"),
-            {
+        // Update useForm data
+        setData({
+            customer_name: data.customer_name,
+            customer_phone: data.customer_phone,
+            payment_method: data.payment_method,
+            items: saleItems,
+            total_amount: saleItems.reduce(
+                (sum, i) => sum + i.quantity * i.unit_price,
+                0,
+            ),
+        });
+
+        // Submit to backend
+        post(route("sales.store"), {
+            data: {
                 customer_name: data.customer_name,
                 customer_phone: data.customer_phone,
                 payment_method: data.payment_method,
                 items: saleItems,
-                total_amount: Number(
-                    saleItems.reduce(
-                        (sum, i) => sum + i.quantity * i.unit_price,
-                        0,
-                    ),
+                total_amount: saleItems.reduce(
+                    (sum, i) => sum + i.quantity * i.unit_price,
+                    0,
                 ),
             },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    reset();
-                    setItems([{ product_id: "", quantity: 1, unit_price: 0 }]);
-                    setSelectedProducts({});
-                    alert("✅ Sale created successfully!");
-                },
-                onError: (errors) => {
-                    console.error(errors);
-                    alert(
-                        "❌ Failed to create sale: " +
-                            Object.values(errors).flat().join(", "),
-                    );
-                },
+            preserveScroll: true,
+            onSuccess: () => {
+                reset();
+                setItems([{ product_id: "", quantity: 1, unit_price: 0 }]);
+                setSelectedProducts({});
+                alert("✅ Sale created successfully!");
             },
-        );
+            onError: (errors) => {
+                console.error(errors);
+                alert(
+                    "❌ Failed to create sale: " +
+                        Object.values(errors).flat().join(", "),
+                );
+            },
+        });
     };
 
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-5xl mx-auto px-4 py-8">
-                {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900">
                         New Sale
@@ -130,7 +145,6 @@ export default function Create({ products }) {
                     </p>
                 </div>
 
-                {/* Form Card */}
                 <form
                     onSubmit={submit}
                     className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
@@ -162,7 +176,6 @@ export default function Create({ products }) {
                                 </p>
                             )}
                         </div>
-
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Phone Number
@@ -177,7 +190,6 @@ export default function Create({ products }) {
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                         </div>
-
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Payment Method *
@@ -200,7 +212,7 @@ export default function Create({ products }) {
                         </div>
                     </div>
 
-                    {/* Items Section */}
+                    {/* Items */}
                     <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-gray-800">
                             Items
@@ -210,23 +222,9 @@ export default function Create({ products }) {
                             onClick={addItem}
                             className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
                         >
-                            <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 4v16m8-8H4"
-                                />
-                            </svg>
-                            Add Item
+                            + Add Item
                         </button>
                     </div>
-
                     <div className="p-6">
                         {items.map((item, index) => {
                             const product = selectedProducts[index];
@@ -246,14 +244,12 @@ export default function Create({ products }) {
                                             type="button"
                                             onClick={() => removeItem(index)}
                                             className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center gap-1"
-                                            title="Delete this item"
                                         >
                                             Delete
                                         </button>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        {/* Product Select */}
                                         <div className="md:col-span-2">
                                             <label className="block text-xs font-medium text-gray-600 mb-1">
                                                 Product *
@@ -267,11 +263,7 @@ export default function Create({ products }) {
                                                         e.target.value,
                                                     )
                                                 }
-                                                className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                                                    !item.product_id
-                                                        ? "border-red-400 bg-red-50"
-                                                        : "border-gray-300"
-                                                }`}
+                                                className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!item.product_id ? "border-red-400 bg-red-50" : "border-gray-300"}`}
                                                 required
                                             >
                                                 <option value="">
@@ -293,20 +285,7 @@ export default function Create({ products }) {
                                                     </option>
                                                 ))}
                                             </select>
-                                            {errors[
-                                                `items.${index}.product_id`
-                                            ] && (
-                                                <p className="text-red-500 text-xs mt-1">
-                                                    {
-                                                        errors[
-                                                            `items.${index}.product_id`
-                                                        ]
-                                                    }
-                                                </p>
-                                            )}
                                         </div>
-
-                                        {/* Quantity */}
                                         <div>
                                             <label className="block text-xs font-medium text-gray-600 mb-1">
                                                 Quantity *
@@ -334,8 +313,6 @@ export default function Create({ products }) {
                                                 </p>
                                             )}
                                         </div>
-
-                                        {/* Unit Price */}
                                         <div>
                                             <label className="block text-xs font-medium text-gray-600 mb-1">
                                                 Price (Br) *
@@ -360,7 +337,6 @@ export default function Create({ products }) {
                                         </div>
                                     </div>
 
-                                    {/* Subtotal */}
                                     <div className="mt-3 text-right">
                                         <span className="text-sm text-gray-600">
                                             Subtotal:{" "}
@@ -384,7 +360,6 @@ export default function Create({ products }) {
                                 Br {calculateTotal()}
                             </span>
                         </div>
-
                         <div className="flex gap-3">
                             <Link
                                 href={route("sales.index")}
