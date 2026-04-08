@@ -82,6 +82,7 @@ export default function Create({ products }) {
             );
             return;
         }
+        // Post to backend
 
         post(
             route("sales.store"),

@@ -11,9 +11,7 @@ use Inertia\Inertia;
 
 class SaleController extends Controller
 {
-    /**
-     * Display a listing of sales.
-     */
+ 
     public function index()
     {
         $sales = Sale::with(['employee', 'items.product'])
