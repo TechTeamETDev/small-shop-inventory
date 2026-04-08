@@ -1,5 +1,6 @@
 import { useForm, usePage } from "@inertiajs/react";
 import { useState } from "react";
+import { Link } from "@inertiajs/react";
 
 export default function Create({ products }) {
     const { auth } = usePage().props;
@@ -20,23 +21,25 @@ export default function Create({ products }) {
     });
 
     // Add new item row
-    const addItem = () => {
+    const addItem = () =>
         setItems([...items, { product_id: "", quantity: 1, unit_price: 0 }]);
-    };
 
-    // Remove item row (DELETE button functionality)
+    // Remove item row
     const removeItem = (index) => {
         const newItems = [...items];
         newItems.splice(index, 1);
-        setItems(newItems);
+        setItems(
+            newItems.length
+                ? newItems
+                : [{ product_id: "", quantity: 1, unit_price: 0 }],
+        );
     };
 
-    // Update item field + auto-fill price when product selected
+    // Update item field + auto-fill price
     const updateItem = (index, field, value) => {
         const newItems = [...items];
         newItems[index][field] = value;
 
-        // Auto-fill price from product
         if (field === "product_id" && value) {
             const product = products.find((p) => p.id == value);
             if (product) {
@@ -46,91 +49,69 @@ export default function Create({ products }) {
                 setSelectedProducts((prev) => ({ ...prev, [index]: product }));
             }
         }
+
         setItems(newItems);
     };
 
     // Calculate subtotal for an item
-    const calculateSubtotal = (item) => {
-        return (item.quantity * item.unit_price).toFixed(2);
-    };
+    const calculateSubtotal = (item) =>
+        (item.quantity * item.unit_price).toFixed(2);
 
     // Calculate grand total
-    const calculateTotal = () => {
-        return items
-            .reduce((sum, item) => {
-                return sum + item.quantity * item.unit_price;
-            }, 0)
+    const calculateTotal = () =>
+        items
+            .reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
             .toFixed(2);
-    };
 
-    // Submit sale with proper validation
+    // Submit sale
     const submit = (e) => {
         e.preventDefault();
 
-        // Prepare items - ensure numeric values AND valid product_id
+        // Prepare items for submission
         const saleItems = items
-            .filter((item) => {
-                const hasProduct =
-                    item.product_id &&
-                    item.product_id !== "" &&
-                    item.product_id !== "0";
-                const hasQuantity = item.quantity && Number(item.quantity) > 0;
-                return hasProduct && hasQuantity;
-            })
+            .filter((item) => item.product_id && item.quantity > 0)
             .map((item) => ({
                 product_id: Number(item.product_id),
                 quantity: Number(item.quantity),
                 unit_price: Number(item.unit_price),
             }));
 
-        // Validate before sending
-        if (saleItems.length === 0) {
-            const emptyProducts = items.filter(
-                (i) => !i.product_id || i.product_id === "",
+        if (!saleItems.length) {
+            alert(
+                "⚠️ Please add at least one item with a selected product and quantity > 0",
             );
-            if (emptyProducts.length > 0) {
-                alert("⚠️ Please select a product for all items");
-            } else {
-                alert("Please add at least one item with quantity > 0");
-            }
             return;
         }
 
-        console.log("🔍 Submitting sale:", {
-            customer_name: data.customer_name,
-            payment_method: data.payment_method,
-            items: saleItems,
-            total: saleItems.reduce(
-                (sum, i) => sum + i.quantity * i.unit_price,
-                0,
-            ),
-        });
-
-        // Send to backend using direct URL (bypasses Ziggy issues)
+        // Post to backend
         post(
-            "/sales",
+            route("sales.store"),
             {
                 customer_name: data.customer_name,
-                customer_phone: data.customer_phone || "",
+                customer_phone: data.customer_phone,
                 payment_method: data.payment_method,
                 items: saleItems,
-                total_amount: saleItems.reduce(
-                    (sum, i) => sum + i.quantity * i.unit_price,
-                    0,
+                total_amount: Number(
+                    saleItems.reduce(
+                        (sum, i) => sum + i.quantity * i.unit_price,
+                        0,
+                    ),
                 ),
             },
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    console.log("✅ Sale created successfully!");
                     reset();
                     setItems([{ product_id: "", quantity: 1, unit_price: 0 }]);
                     setSelectedProducts({});
+                    alert("✅ Sale created successfully!");
                 },
                 onError: (errors) => {
-                    console.error("❌ Sale failed with errors:", errors);
-                    const messages = Object.values(errors).flat();
-                    alert("Sale failed:\n" + messages.join("\n"));
+                    console.error(errors);
+                    alert(
+                        "❌ Failed to create sale: " +
+                            Object.values(errors).flat().join(", "),
+                    );
                 },
             },
         );
@@ -154,53 +135,50 @@ export default function Create({ products }) {
                     onSubmit={submit}
                     className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
                 >
-                    {/* Customer Info Section */}
+                    {/* Customer Info */}
                     <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                         <h2 className="text-lg font-semibold text-gray-800">
                             Customer Information
                         </h2>
                     </div>
-                    <div className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Customer Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Add your name"
-                                    value={data.customer_name}
-                                    onChange={(e) =>
-                                        setData("customer_name", e.target.value)
-                                    }
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    required
-                                />
-                                {errors.customer_name && (
-                                    <p className="text-red-500 text-sm mt-1">
-                                        {errors.customer_name}
-                                    </p>
-                                )}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Phone Number
-                                </label>
-                                <input
-                                    type="tel"
-                                    placeholder="Phone number"
-                                    value={data.customer_phone}
-                                    onChange={(e) =>
-                                        setData(
-                                            "customer_phone",
-                                            e.target.value,
-                                        )
-                                    }
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                            </div>
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Customer Name *
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Add your name"
+                                value={data.customer_name}
+                                onChange={(e) =>
+                                    setData("customer_name", e.target.value)
+                                }
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required
+                            />
+                            {errors.customer_name && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.customer_name}
+                                </p>
+                            )}
                         </div>
-                        <div className="mt-5">
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Phone Number
+                            </label>
+                            <input
+                                type="tel"
+                                placeholder="Phone number"
+                                value={data.customer_phone}
+                                onChange={(e) =>
+                                    setData("customer_phone", e.target.value)
+                                }
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Payment Method *
                             </label>
@@ -213,9 +191,7 @@ export default function Create({ products }) {
                                 required
                             >
                                 <option value="cash">💵 Cash</option>
-                                <option value="cbe">
-                                    🏦 CBE (Commercial Bank of Ethiopia)
-                                </option>
+                                <option value="cbe">🏦 CBE</option>
                                 <option value="other_bank">
                                     🏦 Other Bank
                                 </option>
@@ -250,6 +226,7 @@ export default function Create({ products }) {
                             Add Item
                         </button>
                     </div>
+
                     <div className="p-6">
                         {items.map((item, index) => {
                             const product = selectedProducts[index];
@@ -265,32 +242,18 @@ export default function Create({ products }) {
                                         <span className="font-medium text-gray-800">
                                             Item #{index + 1}
                                         </span>
-                                        {/* ✅ DELETE BUTTON - Remove this item row */}
                                         <button
                                             type="button"
                                             onClick={() => removeItem(index)}
                                             className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center gap-1"
                                             title="Delete this item"
                                         >
-                                            <svg
-                                                className="w-4 h-4"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                />
-                                            </svg>
                                             Delete
                                         </button>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        {/* ✅ Product Select - WITH RED BORDER WHEN NOT SELECTED */}
+                                        {/* Product Select */}
                                         <div className="md:col-span-2">
                                             <label className="block text-xs font-medium text-gray-600 mb-1">
                                                 Product *
@@ -372,7 +335,7 @@ export default function Create({ products }) {
                                             )}
                                         </div>
 
-                                        {/* Unit Price - in Ethiopian Birr */}
+                                        {/* Unit Price */}
                                         <div>
                                             <label className="block text-xs font-medium text-gray-600 mb-1">
                                                 Price (Br) *
@@ -397,7 +360,7 @@ export default function Create({ products }) {
                                         </div>
                                     </div>
 
-                                    {/* Subtotal - in Ethiopian Birr */}
+                                    {/* Subtotal */}
                                     <div className="mt-3 text-right">
                                         <span className="text-sm text-gray-600">
                                             Subtotal:{" "}
@@ -411,38 +374,34 @@ export default function Create({ products }) {
                         })}
                     </div>
 
-                    {/* Total & Submit - in Ethiopian Birr */}
-                    <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div>
-                                <span className="text-lg font-semibold text-gray-800">
-                                    Total Amount:{" "}
-                                </span>
-                                <span className="text-2xl font-bold text-green-600">
-                                    Br {calculateTotal()}
-                                </span>
-                            </div>
+                    {/* Total & Submit */}
+                    <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <span className="text-lg font-semibold text-gray-800">
+                                Total Amount:{" "}
+                            </span>
+                            <span className="text-2xl font-bold text-green-600">
+                                Br {calculateTotal()}
+                            </span>
+                        </div>
 
-                            <div className="flex gap-3">
-                                <a
-                                    href="/sales"
-                                    className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                                >
-                                    Cancel
-                                </a>
-                                <button
-                                    type="submit"
-                                    disabled={
-                                        processing ||
-                                        items.every((i) => !i.product_id)
-                                    }
-                                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors"
-                                >
-                                    {processing
-                                        ? "Processing..."
-                                        : "Complete Sale"}
-                                </button>
-                            </div>
+                        <div className="flex gap-3">
+                            <Link
+                                href={route("sales.index")}
+                                className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                            >
+                                Cancel
+                            </Link>
+                            <button
+                                type="submit"
+                                disabled={
+                                    processing ||
+                                    items.every((i) => !i.product_id)
+                                }
+                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors"
+                            >
+                                {processing ? "Processing..." : "Complete Sale"}
+                            </button>
                         </div>
                     </div>
                 </form>
