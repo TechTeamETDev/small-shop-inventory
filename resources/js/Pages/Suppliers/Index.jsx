@@ -16,35 +16,33 @@ export default function Index({ auth, suppliers }) {
             header={
                 <div className="flex justify-between items-center w-full">
                     <div className="flex items-center gap-4">
-                        {/* Navigation Icon */}
+                        
+                        {/* BACK ARROW BUTTON - Consistent with Sales & Purchase */}
                         <Link
                             href={route('dashboard')}
-                            className="flex items-center justify-center w-12 h-12 bg-black rounded-2xl shadow-lg hover:opacity-80 transition-all"
+                            className="bg-black p-3 rounded-xl hover:bg-gray-800 transition-all flex items-center justify-center shadow-sm border border-black"
                         >
-                            <div className="flex items-center justify-center w-7 h-7 border-2 border-white rounded-full">
-                                <svg 
-                                    className="w-4 h-4 text-white" 
-                                    fill="none" 
-                                    stroke="currentColor" 
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path 
-                                        strokeLinecap="round" 
-                                        strokeLinejoin="round" 
-                                        strokeWidth={3} 
-                                        d="M10 19l-7-7m0 0l7-7m-7 7h18" 
-                                    />
-                                </svg>
-                            </div>
+                            <svg 
+                                className="w-5 h-5 text-white" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                            >
+                                <path 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round" 
+                                    strokeWidth={2.5} 
+                                    d="M15 19l-7-7 7-7" 
+                                />
+                            </svg>
                         </Link>
 
                         <div>
-                            <h2 className="font-bold text-2xl text-gray-900 leading-tight">Suppliers</h2>
-                            <p className="text-sm text-gray-500">Track and manage your inventory supply partners.</p>
+                            <h2 className="font-bold text-3xl text-gray-900 tracking-tight">Suppliers</h2>
+                            <p className="text-sm text-gray-500 font-medium">Manage your supply partners and contact details</p>
                         </div>
                     </div>
 
-                    {/* Moved "Add New Supplier" Button here to match Purchase Management layout */}
                     <Link
                         href={route('suppliers.create')}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-md transition duration-150 ease-in-out font-bold flex items-center gap-2"
@@ -64,11 +62,12 @@ export default function Index({ auth, suppliers }) {
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Name</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Email</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Phone</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Address</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">Actions</th>
+                                    {/* Updated Headers: Changed text-gray-400 to text-black */}
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-black uppercase tracking-widest">Name</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-black uppercase tracking-widest">Email</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-black uppercase tracking-widest">Phone</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-black uppercase tracking-widest">Address</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-black uppercase tracking-widest">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-100">
