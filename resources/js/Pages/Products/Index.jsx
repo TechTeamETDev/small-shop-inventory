@@ -24,8 +24,8 @@ export default function Index() {
         category_id: "",
         unit_buy_price: "",
         unit_sell_price: "",
-        current_quantity: 0,
-        min_stock_level: 0,
+        current_quantity: "",
+        min_stock_level: "",
     });
 
     // --- 1. THE TABLE STATE ---
