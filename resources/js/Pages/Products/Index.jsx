@@ -92,10 +92,19 @@ export default function Index() {
 
             onError: (errors) => {
                 setPriceError(Object.values(errors).flat()[0]);
+                setEditingId(editingId);
             },
 
             preserveScroll: true,
         });
+        if (editingId) {
+            put(`/products/${editingId}`, {
+                data,
+                preserveState: false,
+            });
+        } else {
+            post("/products", options);
+        }
     }
     function editProduct(product) {
         setEditingId(product.id);
