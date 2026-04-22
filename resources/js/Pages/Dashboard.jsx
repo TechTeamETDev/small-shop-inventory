@@ -4,16 +4,22 @@ import { usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 
 const Dashboard = () => {
-    const { products = [] } = usePage().props;
+    const {
+        products: initialProducts,
+        categories,
+        auth,
+        totalProducts,
+        lowStockCount,
+        lowStockProducts,
+    } = usePage().props;
+
     return (
         <>
             {/* Stats Cards ONLY */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="bg-white rounded-lg p-5">
                     <p className="text-sm text-gray-500">Total Products</p>
-                    <p className="text-2xl font-semibold">
-                        {products?.length || 0}
-                    </p>
+                    <p className="text-2xl font-semibold">{totalProducts}</p>
                 </div>
 
                 <div className="bg-white rounded-lg p-5">
@@ -22,8 +28,10 @@ const Dashboard = () => {
                 </div>
 
                 <div className="bg-white rounded-lg p-5">
-                    <p className="text-sm text-gray-500">Low Stock</p>
-                    <p className="text-2xl font-semibold">--</p>
+                    <p className="text-sm text-gray-500">Low Stock Products</p>
+                    <p className="text-2xl font-semibold text-red-600">
+                        {lowStockCount}
+                    </p>
                 </div>
             </div>
         </>
