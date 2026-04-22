@@ -1,6 +1,6 @@
 import "../css/app.css";
 import "./bootstrap";
-import { ZiggyVue } from '../../vendor/tightenco/ziggy';
+
 import { createInertiaApp } from "@inertiajs/react";
 import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
 import { createRoot } from "react-dom/client";
@@ -17,8 +17,16 @@ createInertiaApp({
             `./Pages/${name}.jsx`,
             import.meta.glob("./Pages/**/*.jsx"),
         ).then((page) => {
-            // ❗ Skip auth pages
-            if (!name.startsWith("Auth/")) {
+            // ✅ Only apply layout to protected pages
+            const protectedPages = [
+                "Dashboard",
+                "Products/Index",
+                "Users/Index",
+                "Categories/Index",
+                "Orders/Index",
+            ];
+
+            if (protectedPages.includes(name)) {
                 page.default.layout =
                     page.default.layout ||
                     ((page) => (
@@ -30,34 +38,14 @@ createInertiaApp({
         }),
 
     setup({ el, App, props }) {
-        // -----------------------------
-        // ✅ Global Axios interceptor
-        // -----------------------------
+        // Optional: Axios interceptor (kept safe)
         axios.interceptors.response.use(
             (response) => response,
-            async (error) => {
-                const formData = JSON.parse(
-                    localStorage.getItem("form_data") || "{}",
-                );
-
+            (error) => {
                 if (
                     error.response?.status === 401 ||
                     error.response?.status === 419
                 ) {
-                    // Save form data to backend before logout
-                    if (formData && formData.name) {
-                        try {
-                            await axios.post("/products", formData); // adjust endpoint if needed
-                            console.log("Form autosaved before forced logout");
-                        } catch (e) {
-                            console.error(
-                                "Failed to autosave before logout",
-                                e,
-                            );
-                        }
-                    }
-
-                    // Redirect to login
                     window.location.href = "/login";
                 }
 
@@ -65,9 +53,6 @@ createInertiaApp({
             },
         );
 
-        // -----------------------------
-        // Render Inertia App
-        // -----------------------------
         const root = createRoot(el);
         root.render(<App {...props} />);
     },
@@ -76,3 +61,4 @@ createInertiaApp({
         color: "#4B5563",
     },
 });
+s;
