@@ -21,6 +21,7 @@ createInertiaApp({
             const protectedPages = [
                 "Dashboard",
                 "Products/Index",
+                "Sale/Index",
                 "Users/Index",
                 "Categories/Index",
                 "Orders/Index",
