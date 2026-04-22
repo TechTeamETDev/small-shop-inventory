@@ -18,27 +18,32 @@ class ProductController extends Controller
         ]);
     }
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string',
-            'sku' => 'required|string|unique:products,sku',
-            'unit_buy_price' => 'required|numeric|min:0',
-            'unit_sell_price' => 'required|numeric|min:0|gt:unit_buy_price',
-        ]);
+  public function store(Request $request)
+{
+    $validated = $request->validate([
+        'name' => 'required|string',
+        'sku' => 'required|string|unique:products,sku',
+        'category_id' => 'nullable|exists:categories,id',
+        'unit_buy_price' => 'required|numeric|min:0',
+        'unit_sell_price' => 'required|numeric|min:0|gt:unit_buy_price',
+        'current_quantity' => 'nullable|integer|min:0',
+        'min_stock_level' => 'nullable|integer|min:0',
+    ]);
 
-        Product::create($validated);
+    Product::create($validated);
 
-        return back();
-    }
-
+    return back();
+}
     public function update(Request $request, Product $product)
     {
         $validated = $request->validate([
             'name' => 'required|string',
             'sku' => 'required|string|unique:products,sku,' . $product->id,
+            'category_id' => 'nullable|exists:categories,id',
             'unit_buy_price' => 'required|numeric|min:0',
             'unit_sell_price' => 'required|numeric|min:0|gt:unit_buy_price',
+            'current_quantity' => 'nullable|integer|min:0',
+            'min_stock_level' => 'nullable|integer|min:0',
         ]);
 
         $product->update($validated);

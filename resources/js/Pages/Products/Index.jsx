@@ -18,6 +18,7 @@ export default function Index() {
         put,
         delete: destroy,
         reset,
+        processing,
     } = useForm({
         name: "",
         sku: "",
@@ -56,10 +57,13 @@ export default function Index() {
     function submit(e) {
         e.preventDefault();
 
+        if (processing) return; // prevents double submit
+
+        setPriceError("");
+
         const buy = Number(data.unit_buy_price);
         const sell = Number(data.unit_sell_price);
 
-        // FRONTEND VALIDATION
         if (!buy || !sell) {
             setPriceError("Buy and Sell price are required.");
             return;
@@ -70,22 +74,28 @@ export default function Index() {
             return;
         }
 
-        setPriceError("");
-
-        const options = {
+        post("/products", {
             onSuccess: () => {
                 reset();
+                setData({
+                    name: "",
+                    sku: "",
+                    category_id: "",
+                    unit_buy_price: "",
+                    unit_sell_price: "",
+                    current_quantity: "",
+                    min_stock_level: "",
+                });
                 setEditingId(null);
-                localStorage.removeItem("unsaved_forms");
+                setPriceError("");
             },
-            onError: (errors) => console.error(errors),
-        };
 
-        if (editingId) {
-            put(`/products/${editingId}`, options);
-        } else {
-            post("/products", options);
-        }
+            onError: (errors) => {
+                setPriceError(Object.values(errors).flat()[0]);
+            },
+
+            preserveScroll: true,
+        });
     }
     function editProduct(product) {
         setEditingId(product.id);
@@ -141,7 +151,10 @@ export default function Index() {
                         <input
                             placeholder="SKU"
                             value={data.sku}
-                            onChange={(e) => setData("sku", e.target.value)}
+                            onChange={(e) => {
+                                setData("sku", e.target.value);
+                                setPriceError(""); // clears old "SKU taken" instantly
+                            }}
                             className="border rounded-lg p-2"
                         />
                         <select
@@ -162,18 +175,20 @@ export default function Index() {
                             type="number"
                             placeholder="Buy Price (ETB)"
                             value={data.unit_buy_price}
-                            onChange={(e) =>
-                                setData("unit_buy_price", e.target.value)
-                            }
+                            onChange={(e) => {
+                                setData("unit_buy_price", e.target.value);
+                                setPriceError(""); //
+                            }}
                             className="border rounded-lg p-2"
                         />
                         <input
                             type="number"
                             placeholder="Sell Price (ETB)"
                             value={data.unit_sell_price}
-                            onChange={(e) =>
-                                setData("unit_sell_price", e.target.value)
-                            }
+                            onChange={(e) => {
+                                setData("unit_sell_price", e.target.value);
+                                setPriceError("");
+                            }}
                             className="border rounded-lg p-2"
                         />
                         <input
@@ -208,8 +223,15 @@ export default function Index() {
                                 Cancel
                             </button>
                         )}
-                        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                            {editingId ? "Update" : "Add Product"}
+                        <button
+                            disabled={processing}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            {processing
+                                ? "Saving..."
+                                : editingId
+                                  ? "Update"
+                                  : "Add Product"}
                         </button>
                     </div>
                 </form>
