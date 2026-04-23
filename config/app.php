@@ -65,8 +65,8 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
-
+   // Find this line (usually around line 70)
+'timezone' => 'Africa/Addis_Ababa',
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

@@ -15,17 +15,12 @@ export default function Show({ auth, purchase }) {
         <AuthenticatedLayout user={auth.user}>
             <Head title={`Purchase #${purchase.id}`} />
             
-            {/* Reduced overall vertical padding from py-12 to py-6 */}
             <div className="py-6 bg-[#F8F9FA] min-h-screen">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
                     
-                    {/* Header Section: Thinner gap and smaller text */}
+                    {/* Header Section */}
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
-                            <Link href={route('purchases.index')} 
-                                  className="bg-black p-2 rounded-lg hover:bg-gray-800 transition-all shadow-sm">
-                                <span className="text-white text-base">←</span>
-                            </Link>
                             <div>
                                 <h1 className="text-xl font-black text-black tracking-tight">
                                     <span className="text-gray-300">#</span>{purchase.id} - Purchase Details
@@ -38,7 +33,7 @@ export default function Show({ auth, purchase }) {
                         </span>
                     </div>
 
-                    {/* Summary Card: Reduced padding from p-8 to p-5 */}
+                    {/* Summary Card */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-5">
                         <h3 className="text-[10px] font-black text-black uppercase tracking-widest mb-4 border-b border-gray-50 pb-3">
                             Transaction Summary
@@ -49,12 +44,20 @@ export default function Show({ auth, purchase }) {
                                 <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Supplier</p>
                                 <p className="font-bold text-black text-sm">{purchase.supplier?.name || 'System Record'}</p>
                             </div>
+                            
+                            {/* DATE & TIME STACKED VERTICALLY */}
                             <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Date</p>
-                                <p className="font-bold text-black text-sm">
-                                    {new Date(purchase.purchase_date).toLocaleDateString()}
-                                </p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Date & Time</p>
+                                <div className="flex flex-col">
+                                    <p className="font-bold text-black text-sm leading-tight">
+                                        {new Date(purchase.purchase_date).toLocaleDateString()}
+                                    </p>
+                                    <p className="text-slate-500 font-semibold text-[11px] mt-0.5">
+                                        {new Date(purchase.purchase_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                </div>
                             </div>
+
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Recorded By</p>
                                 <p className="font-bold text-black text-sm">{purchase.user?.name || 'Admin'}</p>
@@ -62,7 +65,7 @@ export default function Show({ auth, purchase }) {
                         </div>
                     </div>
 
-                    {/* Table: Shrunk cell padding from py-6 to py-3 */}
+                    {/* Table Section */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <table className="w-full text-left border-collapse">
                             <thead>
