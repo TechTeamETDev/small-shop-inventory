@@ -64,7 +64,10 @@ Route::get('/stock-adjustments/create', [StockAdjustmentController::class, 'crea
 
 Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])
     ->name('stock-adjustments.store');
-
+    Route::put('/stock-adjustments/{id}', [StockAdjustmentController::class, 'update']);
+Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'destroy']);
+Route::put('/stock-adjustments/{id}', [StockAdjustmentController::class, 'update']);
+Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'destroy']);
     // Sales Routes
     Route::resource('sales', SaleController::class);
 

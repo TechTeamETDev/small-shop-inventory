@@ -13,7 +13,8 @@ class StockAdjustmentController extends Controller
     {
         return Inertia::render('StockAdjustments/Create', [
             'categories' => \App\Models\Category::select('id', 'name')->get(),
-            'products' => \App\Models\Product::select('id','name','current_quantity','category_id')->get()
+            'products' => \App\Models\Product::select('id','name','current_quantity','category_id')->get(),
+            'adjustments' => StockAdjustment::with('product')->latest()->get()
         ]);
     }
 
@@ -24,41 +25,87 @@ class StockAdjustmentController extends Controller
             'type' => 'required|in:increment,decrement',
             'quantity' => 'required|integer|min:1',
             'note' => 'nullable|string',
-            'category_id' => 'nullable|exists:categories,id',
         ]);
 
         $product = Product::findOrFail($validated['product_id']);
-
-        // IMPORTANT: save previous stock BEFORE update
         $previousStock = $product->current_quantity;
 
-        // update stock
         if ($validated['type'] === 'increment') {
             $product->current_quantity += $validated['quantity'];
         } else {
             if ($product->current_quantity < $validated['quantity']) {
-                return back()->withErrors([
-                    'quantity' => 'Not enough stock available'
-                ]);
+                return back()->withErrors(['quantity' => 'Not enough stock']);
             }
-
             $product->current_quantity -= $validated['quantity'];
         }
 
         $product->save();
 
-        // create stock adjustment log (FIXED)
         StockAdjustment::create([
             'product_id' => $product->id,
-            'category_id' => $product->category_id, // ALWAYS from product
+            'category_id' => $product->category_id,
             'type' => $validated['type'],
             'quantity' => $validated['quantity'],
             'previous_stock' => $previousStock,
             'new_stock' => $product->current_quantity,
-            'note' => $validated['note'] ?? null,
+            'note' => $validated['note'],
         ]);
 
-        return redirect()->route('products.index')
-            ->with('success', 'Stock updated successfully');
+        return back();
+    }
+
+    public function destroy($id)
+    {
+        $adjustment = StockAdjustment::findOrFail($id);
+        $product = Product::findOrFail($adjustment->product_id);
+
+        if ($adjustment->type === 'increment') {
+            $product->current_quantity -= $adjustment->quantity;
+        } else {
+            $product->current_quantity += $adjustment->quantity;
+        }
+
+        $product->save();
+        $adjustment->delete();
+
+        return back();
+    }
+
+    public function update(Request $request, $id)
+    {
+        $adjustment = StockAdjustment::findOrFail($id);
+        $product = Product::findOrFail($adjustment->product_id);
+
+        $validated = $request->validate([
+            'type' => 'required|in:increment,decrement',
+            'quantity' => 'required|integer|min:1',
+            'note' => 'nullable|string',
+        ]);
+
+        if ($adjustment->type === 'increment') {
+            $product->current_quantity -= $adjustment->quantity;
+        } else {
+            $product->current_quantity += $adjustment->quantity;
+        }
+
+        if ($validated['type'] === 'increment') {
+            $product->current_quantity += $validated['quantity'];
+        } else {
+            if ($product->current_quantity < $validated['quantity']) {
+                return back()->withErrors(['quantity' => 'Not enough stock']);
+            }
+            $product->current_quantity -= $validated['quantity'];
+        }
+
+        $product->save();
+
+        $adjustment->update([
+            'type' => $validated['type'],
+            'quantity' => $validated['quantity'],
+            'note' => $validated['note'],
+            'new_stock' => $product->current_quantity,
+        ]);
+
+        return back();
     }
 }
