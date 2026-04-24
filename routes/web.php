@@ -10,6 +10,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\ProfitController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\StockAdjustmentController;
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Application;
@@ -57,7 +58,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('categories', CategoryController::class)->except(['create', 'edit', 'show']);
     Route::resource('products', ProductController::class)->except(['create', 'edit', 'show']);
     Route::resource('suppliers', SupplierController::class);
+    // Stock Adjustments
+Route::get('/stock-adjustments/create', [StockAdjustmentController::class, 'create'])
+    ->name('stock-adjustments.create');
 
+Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])
+    ->name('stock-adjustments.store');
+    Route::put('/stock-adjustments/{id}', [StockAdjustmentController::class, 'update']);
+Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'destroy']);
+Route::put('/stock-adjustments/{id}', [StockAdjustmentController::class, 'update']);
+Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'destroy']);
     // Sales Routes
     Route::resource('sales', SaleController::class);
 
@@ -86,6 +96,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['permission:view profit reports'])->group(function () {
         Route::get('/profit', [ProfitController::class, 'index'])->name('profit.index');
     });
+    
 
 });
 
