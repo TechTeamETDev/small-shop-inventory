@@ -5,9 +5,24 @@ export default function Index({ sales }) {
     const permissions = auth?.user?.permissions || [];
     const can = (permission) => permissions.includes(permission);
 
-    // Delete sale with confirmation
+    // ✅ Dynamic payment labels
+    const paymentLabels = {
+        cash: "💵 Cash",
+        cbe: "🏦 CBE",
+        other_bank: "🏦 Other Bank",
+        telebirr: "📱 Tele Birr",
+    };
+
+    // Delete sale
     const deleteSale = (sale) => {
-        if (confirm(`⚠️ Are you sure you want to delete Sale #${sale.id}?\n\nThis will:\n- Cancel the sale\n- Restore ${sale.items.reduce((sum, item) => sum + item.quantity, 0)} items to stock\n\nThis action cannot be undone!`)) {
+        if (
+            confirm(
+                `⚠️ Are you sure you want to delete Sale #${sale.id}?\n\nThis will:\n- Cancel the sale\n- Restore ${sale.items.reduce(
+                    (sum, item) => sum + item.quantity,
+                    0,
+                )} items to stock\n\nThis action cannot be undone!`,
+            )
+        ) {
             router.delete(route("sales.destroy", sale.id), {
                 preserveScroll: true,
                 onSuccess: () => {
@@ -15,7 +30,10 @@ export default function Index({ sales }) {
                 },
                 onError: (errors) => {
                     console.error("❌ Failed to delete sale:", errors);
-                    alert("Failed to delete sale: " + Object.values(errors).flat().join(", "));
+                    alert(
+                        "Failed to delete sale: " +
+                            Object.values(errors).flat().join(", "),
+                    );
                 },
             });
         }
@@ -24,171 +42,192 @@ export default function Index({ sales }) {
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 py-8">
-                
-                {/* Header Section - Replicated from Purchase Page */}
+                {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div className="flex items-center gap-4">
-                        {/* BACK ARROW BUTTON */}
-                        <Link 
-    href={route('dashboard')} 
-    className="bg-black p-3 rounded-xl hover:bg-gray-800 transition-all flex items-center justify-center shadow-sm border border-black"
->
-    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-    </svg>
-</Link>
-                        
+                        <Link
+                            href={route("dashboard")}
+                            className="bg-black p-3 rounded-xl hover:bg-gray-800 transition-all flex items-center justify-center shadow-sm border border-black"
+                        >
+                            <svg
+                                className="w-5 h-5 text-white"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2.5}
+                                    d="M15 19l-7-7 7-7"
+                                />
+                            </svg>
+                        </Link>
+
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Sales</h1>
-                            <p className="text-gray-500 font-medium text-sm">Manage sales transactions</p>
+                            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+                                Sales
+                            </h1>
+                            <p className="text-gray-500 text-sm">
+                                Manage sales transactions
+                            </p>
                         </div>
                     </div>
 
-                    {/* ✅ Show "New Sale" button only if user has permission */}
                     {can("create sales") && (
                         <Link
                             href={route("sales.create")}
-                            className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-100 transition-all active:scale-95 flex items-center gap-2"
+                            className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg transition-all"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
                             New Sale
                         </Link>
                     )}
                 </div>
 
-                {/* Status Summary */}
+                {/* Summary */}
                 {sales?.data?.length > 0 && (
                     <div className="mb-6">
                         <p className="text-sm text-gray-600">
-                            Showing <span className="font-semibold">{sales.data.length}</span> of{" "}
-                            <span className="font-semibold">{sales.total}</span> sales
+                            Showing{" "}
+                            <span className="font-semibold">
+                                {sales.data.length}
+                            </span>{" "}
+                            of{" "}
+                            <span className="font-semibold">{sales.total}</span>{" "}
+                            sales
                         </p>
                     </div>
                 )}
 
-                {/* Sales Table */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {sales.data.length > 0 ? (
-                                    sales.data.map((sale) => (
-                                        <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {sale.customer_name || "Walk-in Customer"}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {sale.customer_phone || <span className="text-gray-300">N/A</span>}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                                Br {parseFloat(sale.total_amount).toFixed(2)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {sale.payment_method === "cash" && "💵 Cash"}
-                                                {sale.payment_method === "cbe" && "🏦 CBE"}
-                                                {sale.payment_method === "other_bank" && "🏦 Other Bank"}
-                                                {sale.payment_method === "telebirr" && "📱 Tele Birr"}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                    sale.status === "completed"
-                                                        ? "bg-green-100 text-green-800"
-                                                        : sale.status === "cancelled"
-                                                        ? "bg-red-100 text-red-800"
-                                                        : "bg-yellow-100 text-yellow-800"
-                                                }`}>
-                                                    {sale.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {new Date(sale.created_at).toLocaleDateString()}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <Link
-                                                        href={route("sales.show", sale.id)}
-                                                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                                                    >
-                                                        View
-                                                    </Link>
-                                                    
-                                                    {(can("delete sales") || can("manage users")) && (
-                                                        <button
-                                                            onClick={() => deleteSale(sale)}
-                                                            className="text-red-600 hover:text-red-800 transition-colors flex items-center gap-1"
-                                                            title="Delete this sale (restores stock)"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                            Delete
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="7" className="px-6 py-12 text-center">
-                                            <div className="flex flex-col items-center justify-center">
-                                                <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                                <p className="text-gray-500 text-lg font-medium">No sales found</p>
-                                                {can("create sales") && (
-                                                    <Link
-                                                        href={route("sales.create")}
-                                                        className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                                                    >
-                                                        Create Your First Sale
-                                                    </Link>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                {/* ✅ Card Layout */}
+                <div className="bg-white rounded-xl shadow-sm border p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {sales.data.length > 0 ? (
+                            sales.data.map((sale) => (
+                                <div
+                                    key={sale.id}
+                                    className="bg-white rounded-2xl shadow-sm border p-5 hover:shadow-md transition"
+                                >
+                                    {/* Header */}
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h2 className="font-bold text-gray-900">
+                                            {sale.customer_name ||
+                                                "Walk-in Customer"}
+                                        </h2>
+                                        <span className="text-xs text-gray-400">
+                                            #{sale.id}
+                                        </span>
+                                    </div>
+
+                                    {/* Phone */}
+                                    <p className="text-sm text-gray-500 mb-2">
+                                        {sale.customer_phone || "No phone"}
+                                    </p>
+
+                                    {/* Total */}
+                                    <p className="text-lg font-semibold text-gray-900 mb-2">
+                                        Br{" "}
+                                        {parseFloat(sale.total_amount).toFixed(
+                                            2,
+                                        )}
+                                    </p>
+
+                                    {/* ✅ Dynamic Payment */}
+                                    <p className="text-sm text-gray-700 mb-2">
+                                        {paymentLabels[sale.payment_method] ||
+                                            sale.payment_method}
+                                    </p>
+
+                                    {/* Status */}
+                                    <span
+                                        className={`inline-block px-3 py-1 text-xs rounded-full mb-3 ${
+                                            sale.status === "completed"
+                                                ? "bg-green-100 text-green-700"
+                                                : sale.status === "cancelled"
+                                                  ? "bg-red-100 text-red-700"
+                                                  : "bg-yellow-100 text-yellow-700"
+                                        }`}
+                                    >
+                                        {sale.status}
+                                    </span>
+
+                                    {/* Date */}
+                                    <p className="text-xs text-gray-400 mb-4">
+                                        {new Date(
+                                            sale.created_at,
+                                        ).toLocaleDateString()}
+                                    </p>
+
+                                    {/* Actions */}
+                                    <div className="flex justify-between items-center">
+                                        <Link
+                                            href={route("sales.show", sale.id)}
+                                            className="text-blue-600 text-sm hover:underline"
+                                        >
+                                            View
+                                        </Link>
+
+                                        {(can("delete sales") ||
+                                            can("manage users")) && (
+                                            <button
+                                                onClick={() => deleteSale(sale)}
+                                                className="text-red-600 text-sm hover:underline"
+                                            >
+                                                cancel
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="col-span-full text-center py-12 text-gray-500">
+                                No sales found
+                            </div>
+                        )}
                     </div>
 
                     {/* Pagination */}
                     {sales.last_page > 1 && (
-                        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-                            <div className="flex items-center justify-between">
-                                <div className="text-sm text-gray-600">
-                                    Page <span className="font-medium">{sales.current_page}</span> of{" "}
-                                    <span className="font-medium">{sales.last_page}</span>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Link
-                                        href={sales.links.prev || "#"}
-                                        className={`px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium transition-colors ${!sales.links.prev ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'}`}
-                                        onClick={(e) => !sales.links.prev && e.preventDefault()}
-                                    >
-                                        ← Previous
-                                    </Link>
-                                    <Link
-                                        href={sales.links.next || "#"}
-                                        className={`px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium transition-colors ${!sales.links.next ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'}`}
-                                        onClick={(e) => !sales.links.next && e.preventDefault()}
-                                    >
-                                        Next →
-                                    </Link>
-                                </div>
+                        <div className="mt-6 flex justify-between items-center">
+                            <div className="text-sm text-gray-600">
+                                Page{" "}
+                                <span className="font-medium">
+                                    {sales.current_page}
+                                </span>{" "}
+                                of{" "}
+                                <span className="font-medium">
+                                    {sales.last_page}
+                                </span>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <Link
+                                    href={sales.links.prev || "#"}
+                                    className={`px-4 py-2 border rounded-lg text-sm ${
+                                        !sales.links.prev
+                                            ? "text-gray-400 cursor-not-allowed"
+                                            : "text-gray-700 hover:bg-gray-50"
+                                    }`}
+                                    onClick={(e) =>
+                                        !sales.links.prev && e.preventDefault()
+                                    }
+                                >
+                                    ← Previous
+                                </Link>
+
+                                <Link
+                                    href={sales.links.next || "#"}
+                                    className={`px-4 py-2 border rounded-lg text-sm ${
+                                        !sales.links.next
+                                            ? "text-gray-400 cursor-not-allowed"
+                                            : "text-gray-700 hover:bg-gray-50"
+                                    }`}
+                                    onClick={(e) =>
+                                        !sales.links.next && e.preventDefault()
+                                    }
+                                >
+                                    Next →
+                                </Link>
                             </div>
                         </div>
                     )}

@@ -22,6 +22,8 @@ createInertiaApp({
                 "Dashboard",
                 "Products/Index",
                 "Sale/Index",
+                "Sale/Create",
+                "Sale/Show",
                 "Users/Index",
                 "Categories/Index",
                 "Orders/Index",

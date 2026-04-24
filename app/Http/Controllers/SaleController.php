@@ -11,17 +11,26 @@ use Inertia\Inertia;
 
 class SaleController extends Controller
 {
-    public function index()
-    {
-        $sales = Sale::with(['employee', 'items.product'])
-            ->latest()
-            ->paginate(15);
+   public function index()
+{
+    $sales = Sale::select([
+            'id',
+            'user_id',
+            'customer_name',
+            'customer_phone',
+            'payment_method',
+            'status',
+            'total_amount',
+            'created_at',
+        ])
+        ->with(['employee', 'items.product'])
+        ->latest()
+        ->paginate(15);
 
-        return Inertia::render('Sale/Index', [
-            'sales' => $sales,
-        ]);
-    }
-
+    return Inertia::render('Sale/Index', [
+        'sales' => $sales,
+    ]);
+}
     public function create()
     {
         $products = Product::where('current_quantity', '>', 0)

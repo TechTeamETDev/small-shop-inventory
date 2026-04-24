@@ -1,215 +1,230 @@
-import { useForm, usePage } from "@inertiajs/react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { router } from "@inertiajs/react";
 
 export default function Create({ products }) {
-    const { auth } = usePage().props;
-    const permissions = auth?.user?.permissions || [];
-    const can = (permission) => permissions.includes(permission);
+    const [search, setSearch] = useState("");
+    const [cart, setCart] = useState([]);
+    const [paymentMethod, setPaymentMethod] = useState("cash");
+    const [customerName, setCustomerName] = useState("");
+    const [customerPhone, setCustomerPhone] = useState("");
 
-    // Local state for UI management
-    const [items, setItems] = useState([{ product_id: "", quantity: 1, unit_price: 0 }]);
-    const [selectedProducts, setSelectedProducts] = useState({});
+    // 🔍 Filter products
+    const filteredProducts = products.filter((p) =>
+        p.name.toLowerCase().includes(search.toLowerCase()),
+    );
 
-    const { data, setData, post, processing, errors, reset } = useForm({
-        customer_name: "",
-        customer_phone: "",
-        payment_method: "cash",
-        total_amount: 0,
-        items: [], 
-    });
+    // ➕ Add to cart
+    const addToCart = (product) => {
+        const price = Number(product.unit_sell_price || 0);
 
-    // Synchronize local items and total_amount with the Inertia form state
-    useEffect(() => {
-        const formattedItems = items.filter(item => item.product_id !== "").map(item => ({
-            product_id: Number(item.product_id),
-            quantity: Number(item.quantity),
-            unit_price: Number(item.unit_price),
-        }));
+        // prevent invalid price
+        if (price <= 0) return;
 
-        const total = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+        setCart((prev) => {
+            const exist = prev.find((p) => p.id === product.id);
 
-        setData(prevData => ({
-            ...prevData,
-            items: formattedItems,
-            total_amount: total.toFixed(2)
-        }));
-    }, [items]);
-
-    const addItem = () => {
-        setItems([...items, { product_id: "", quantity: 1, unit_price: 0 }]);
-    };
-
-    const removeItem = (index) => {
-        if (items.length > 1) {
-            const newItems = items.filter((_, i) => i !== index);
-            setItems(newItems);
-            
-            const newSelected = { ...selectedProducts };
-            delete newSelected[index];
-            setSelectedProducts(newSelected);
-        }
-    };
-
-    const updateItem = (index, field, value) => {
-        const newItems = [...items];
-        newItems[index][field] = value;
-        
-        if (field === "product_id" && value) {
-            const product = products.find(p => p.id == value);
-            if (product) {
-                newItems[index].unit_price = parseFloat(product.unit_sell_price);
-                setSelectedProducts(prev => ({ ...prev, [index]: product }));
+            if (exist) {
+                return prev.map((p) =>
+                    p.id === product.id ? { ...p, qty: p.qty + 1 } : p,
+                );
             }
-        }
-        setItems(newItems);
-    };
 
-    const calculateSubtotal = (item) => (item.quantity * item.unit_price).toFixed(2);
-
-    const submit = (e) => {
-        e.preventDefault();
-
-        if (data.items.length === 0) {
-            alert("⚠️ Please add at least one valid product.");
-            return;
-        }
-
-        post('/sales', {
-            preserveScroll: true,
-            onSuccess: () => {
-                reset();
-                setItems([{ product_id: "", quantity: 1, unit_price: 0 }]);
-                setSelectedProducts({});
-            },
-            onError: (err) => {
-                console.error("❌ Submission failed:", err);
-            }
+            return [
+                ...prev,
+                {
+                    id: product.id,
+                    name: product.name,
+                    price,
+                    qty: 1,
+                    stock: product.current_quantity,
+                },
+            ];
         });
     };
 
+    // ❌ Remove item
+    const removeItem = (id) => {
+        setCart(cart.filter((item) => item.id !== id));
+    };
+
+    // 💰 Safer total calculation
+    const total = cart.reduce(
+        (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0),
+        0,
+    );
+
+    // 🚀 Submit sale (CLEAN + FIXED)
+    const submitSale = () => {
+        if (cart.length === 0) {
+            alert("Cart is empty!");
+            return;
+        }
+
+        if (!customerName.trim()) {
+            alert("Customer name is required!");
+            return;
+        }
+
+        router.post(route("sales.store"), {
+            customer_name: customerName,
+            customer_phone: customerPhone || null,
+            payment_method: paymentMethod,
+
+            items: cart.map((item) => ({
+                product_id: item.id,
+                quantity: item.qty,
+                unit_price: item.price,
+            })),
+        });
+    };
+
+    // 🔴 Cancel
+    const cancelOrder = () => {
+        setCart([]);
+    };
+
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="max-w-5xl mx-auto px-4 py-8">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">New Sale</h1>
-                    <p className="text-gray-500 mt-1">Create a new sales transaction</p>
+        <div className="p-6 bg-gray-100 min-h-screen">
+            <div className="grid grid-cols-12 gap-6">
+                {/* 🟦 PRODUCT SECTION */}
+                <div className="col-span-8 bg-white p-5 rounded-xl shadow">
+                    <h2 className="font-bold mb-4">Product Section</h2>
+
+                    <input
+                        type="text"
+                        placeholder="Search..."
+                        className="w-full border p-2 rounded mb-4"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+
+                    <div className="grid grid-cols-3 gap-4">
+                        {filteredProducts.map((product) => (
+                            <div
+                                key={product.id}
+                                onClick={() => addToCart(product)}
+                                className="border p-3 rounded cursor-pointer hover:bg-gray-100"
+                            >
+                                <h3 className="font-semibold">
+                                    {product.name}
+                                </h3>
+
+                                <p>
+                                    Br{" "}
+                                    {Number(
+                                        product.unit_sell_price || 0,
+                                    ).toFixed(2)}
+                                </p>
+
+                                <p className="text-xs text-gray-400">
+                                    Qty: {product.current_quantity}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
-                <form onSubmit={submit} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                        <h2 className="text-lg font-semibold text-gray-800">Customer Information</h2>
-                    </div>
-                    <div className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name *</label>
-                                <input
-                                    type="text"
-                                    value={data.customer_name}
-                                    onChange={(e) => setData("customer_name", e.target.value)}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    required
-                                />
-                                {errors.customer_name && <p className="text-red-500 text-sm mt-1">{errors.customer_name}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                                <input
-                                    type="tel"
-                                    value={data.customer_phone}
-                                    onChange={(e) => setData("customer_phone", e.target.value)}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                />
-                                {errors.customer_phone && <p className="text-red-500 text-sm mt-1">{errors.customer_phone}</p>}
-                            </div>
-                        </div>
-                        <div className="mt-5">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method *</label>
-                            <select
-                                value={data.payment_method}
-                                onChange={(e) => setData("payment_method", e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                required
-                            >
-                                <option value="cash">💵 Cash</option>
-                                <option value="cbe">🏦 CBE (Commercial Bank of Ethiopia)</option>
-                                <option value="other_bank">🏦 Other Bank</option>
-                                <option value="telebirr">📱 Tele Birr</option>
-                            </select>
-                        </div>
+                {/* 🟩 BILLING SECTION */}
+                <div className="col-span-4 bg-white p-5 rounded-xl shadow">
+                    <h2 className="font-bold mb-4">Billing Section</h2>
+
+                    {/* 👤 CUSTOMER INFO */}
+                    <div className="mb-4">
+                        <input
+                            type="text"
+                            placeholder="Customer Name *"
+                            className="w-full border p-2 rounded mb-2"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                        />
+
+                        <input
+                            type="text"
+                            placeholder="Customer Phone (optional)"
+                            className="w-full border p-2 rounded"
+                            value={customerPhone}
+                            onChange={(e) => setCustomerPhone(e.target.value)}
+                        />
                     </div>
 
-                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-gray-800">Items</h2>
-                        <button type="button" onClick={addItem} className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1">
-                            Add Item
-                        </button>
-                    </div>
-                    
-                    <div className="p-6">
-                        {items.map((item, index) => (
-                            <div key={index} className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
-                                <div className="flex items-start justify-between mb-3">
-                                    <span className="font-medium text-gray-800">Item #{index + 1}</span>
-                                    <button type="button" onClick={() => removeItem(index)} className="text-red-600 hover:text-red-800 text-sm">
-                                        Delete
+                    {/* 💳 PAYMENT */}
+                    <select
+                        className="w-full border p-2 rounded mb-4"
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                    >
+                        <option value="cash">Cash</option>
+                        <option value="cbe">CBE</option>
+                        <option value="telebirr">Telebirr</option>
+                        <option value="other_bank">Other Bank</option>
+                    </select>
+
+                    {/* 🧾 CART */}
+                    <div className="mb-4">
+                        {cart.length === 0 && (
+                            <p className="text-gray-400">No items added</p>
+                        )}
+
+                        {cart.map((item) => (
+                            <div
+                                key={item.id}
+                                className="flex justify-between items-center border-b py-2"
+                            >
+                                <div>
+                                    <p className="text-sm font-medium">
+                                        {item.name}
+                                    </p>
+                                    <p className="text-xs text-gray-400">
+                                        {item.qty} × {item.price}
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <span>
+                                        {(
+                                            Number(item.price) *
+                                            Number(item.qty)
+                                        ).toFixed(2)}
+                                    </span>
+
+                                    <button
+                                        onClick={() => removeItem(item.id)}
+                                        className="text-red-500"
+                                    >
+                                        ✕
                                     </button>
-                                </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <div className="md:col-span-2">
-                                        <select
-                                            value={item.product_id}
-                                            onChange={(e) => updateItem(index, "product_id", e.target.value)}
-                                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
-                                            required
-                                        >
-                                            <option value="">Select a product...</option>
-                                            {products.map(p => (
-                                                <option key={p.id} value={p.id} disabled={p.current_quantity <= 0}>
-                                                    {p.name} ({p.current_quantity} in stock)
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            value={item.quantity}
-                                            onChange={(e) => updateItem(index, "quantity", e.target.value)}
-                                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <input
-                                            type="number"
-                                            value={item.unit_price}
-                                            onChange={(e) => updateItem(index, "unit_price", e.target.value)}
-                                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div className="mt-3 text-right font-semibold">
-                                    Br {calculateSubtotal(item)}
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
-                        <div className="text-lg font-bold">Total: <span className="text-green-600">Br {data.total_amount}</span></div>
+                    {/* 💰 TOTAL */}
+                    <div className="border-t pt-4">
+                        <p className="flex justify-between">
+                            <span>Total:</span>
+                            <span className="font-bold">
+                                Br {total.toFixed(2)}
+                            </span>
+                        </p>
+                    </div>
+
+                    {/* ACTIONS */}
+                    <div className="mt-6 flex flex-col gap-3">
                         <button
-                            type="submit"
-                            disabled={processing}
-                            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400"
+                            onClick={submitSale}
+                            className="bg-blue-600 text-white py-2 rounded"
                         >
-                            {processing ? "Processing..." : "Complete Sale"}
+                            Place Order
+                        </button>
+
+                        <button
+                            onClick={cancelOrder}
+                            className="bg-red-500 text-white py-2 rounded"
+                        >
+                            Cancel Order
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     );
