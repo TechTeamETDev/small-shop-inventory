@@ -8,7 +8,7 @@ export default function Create({ products }) {
     const [customerName, setCustomerName] = useState("");
     const [customerPhone, setCustomerPhone] = useState("");
 
-    // 🔍 Filter products
+    //  Filter products
     const filteredProducts = products.filter((p) =>
         p.name.toLowerCase().includes(search.toLowerCase()),
     );
@@ -88,7 +88,7 @@ export default function Create({ products }) {
     return (
         <div className="p-6 bg-gray-100 min-h-screen">
             <div className="grid grid-cols-12 gap-6">
-                {/* 🟦 PRODUCT SECTION */}
+                {/* PRODUCT SECTION */}
                 <div className="col-span-8 bg-white p-5 rounded-xl shadow">
                     <h2 className="font-bold mb-4">Product Section</h2>
 
@@ -126,7 +126,7 @@ export default function Create({ products }) {
                     </div>
                 </div>
 
-                {/* 🟩 BILLING SECTION */}
+                {/* BILLING SECTION */}
                 <div className="col-span-4 bg-white p-5 rounded-xl shadow">
                     <h2 className="font-bold mb-4">Billing Section</h2>
 
@@ -149,7 +149,7 @@ export default function Create({ products }) {
                         />
                     </div>
 
-                    {/* 💳 PAYMENT */}
+                    {/* PAYMENT */}
                     <select
                         className="w-full border p-2 rounded mb-4"
                         value={paymentMethod}
@@ -161,7 +161,7 @@ export default function Create({ products }) {
                         <option value="other_bank">Other Bank</option>
                     </select>
 
-                    {/* 🧾 CART */}
+                    {/*  CART */}
                     <div className="mb-4">
                         {cart.length === 0 && (
                             <p className="text-gray-400">No items added</p>
@@ -200,7 +200,7 @@ export default function Create({ products }) {
                         ))}
                     </div>
 
-                    {/* 💰 TOTAL */}
+                    {/* TOTAL */}
                     <div className="border-t pt-4">
                         <p className="flex justify-between">
                             <span>Total:</span>
