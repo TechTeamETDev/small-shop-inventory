@@ -218,9 +218,9 @@ export default function Create({ products }) {
 
                                     <button
                                         onClick={cancelOrder}
-                                        className="w-full bg-gray-300 py-2 rounded"
+                                        className="w-full bg-red-500 py-2 rounded"
                                     >
-                                        Clear Cart
+                                        Cancel order
                                     </button>
                                 </div>
                             </div>
