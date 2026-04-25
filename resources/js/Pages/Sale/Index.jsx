@@ -5,7 +5,7 @@ export default function Index({ sales }) {
     const permissions = auth?.user?.permissions || [];
     const can = (permission) => permissions.includes(permission);
 
-    // ✅ Dynamic payment labels
+    // Dynamic payment labels
     const paymentLabels = {
         cash: "💵 Cash",
         cbe: "🏦 CBE",

@@ -188,7 +188,7 @@ export default function UsersIndex() {
                                     <td className="p-4 text-right">
                                         <button
                                             onClick={() => openEdit(user)}
-                                            className="px-3 py-1 bg-yellow-400 rounded mr-2"
+                                            className="px-3 py-1 bg-gray-400 rounded mr-2"
                                         >
                                             Edit
                                         </button>
