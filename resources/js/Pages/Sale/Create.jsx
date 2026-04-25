@@ -140,7 +140,7 @@ export default function Create({ products }) {
 
                         <input
                             type="text"
-                            placeholder="Customer Phone (optional)"
+                            placeholder="Customer Phone"
                             className="w-full border p-2 rounded"
                             value={customerPhone}
                             onChange={(e) => setCustomerPhone(e.target.value)}
