@@ -42,18 +42,18 @@ export default function Create({ products }) {
         });
     };
 
-    // ❌ Remove item
+    // Remove item
     const removeItem = (id) => {
         setCart(cart.filter((item) => item.id !== id));
     };
 
-    // 💰 Safer total calculation
+    // Safer total calculation
     const total = cart.reduce(
         (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0),
         0,
     );
 
-    // 🚀 Submit sale (CLEAN + FIXED)
+    // Submit sale (CLEAN + FIXED)
     const submitSale = () => {
         if (cart.length === 0) {
             alert("Cart is empty!");
@@ -78,9 +78,11 @@ export default function Create({ products }) {
         });
     };
 
-    // 🔴 Cancel
     const cancelOrder = () => {
         setCart([]);
+    };
+    const goBack = () => {
+        router.visit(route("sales.index"));
     };
 
     return (
@@ -222,6 +224,13 @@ export default function Create({ products }) {
                             className="bg-red-500 text-white py-2 rounded"
                         >
                             Cancel Order
+                        </button>
+                        {/* 🔙 BACK BUTTON */}
+                        <button
+                            onClick={goBack}
+                            className="mb-4 bg-gray-500 text-white px-4 py-2 rounded"
+                        >
+                            ← Back
                         </button>
                     </div>
                 </div>
