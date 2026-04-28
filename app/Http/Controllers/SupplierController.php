@@ -35,6 +35,8 @@ class SupplierController extends Controller
         'name' => 'required|string|max:255',
         'email' => 'nullable|email',
         'phone' => 'nullable|string',
+        'tin_number' => 'required|string|unique:suppliers,tin_number',
+        'account_number' => 'nullable|string',
         'address' => 'nullable|string',
     ]);
 
@@ -67,6 +69,8 @@ public function update(Request $request, Supplier $supplier)
         'name' => 'required|string|max:255',
         'email' => 'nullable|email',
         'phone' => 'nullable|string',
+        'tin_number' => 'required|string|unique:suppliers,tin_number',
+        'account_number' => 'nullable|string',
         'address' => 'nullable|string',
     ]);
 
