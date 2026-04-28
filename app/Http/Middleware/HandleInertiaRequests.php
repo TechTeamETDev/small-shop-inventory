@@ -8,7 +8,7 @@ use Inertia\Middleware;
 class HandleInertiaRequests extends Middleware
 {
     /**
-     * The root template that is loaded on the first page visit.
+     * The root template loaded on the first page visit.
      *
      * @var string
      */
@@ -29,11 +29,25 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        return [
-            ...parent::share($request),
+        // Get the authenticated user and eager-load roles
+        $user = $request->user()?->load('roles');
+
+        return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user
+                    ? [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'roles' => $user->roles->map(fn($role) => [
+                            'id' => $role->id,
+                            'name' => $role->name,
+                        ]),
+                        'permissions' => $user
+                            ->getAllPermissions()
+                            ->pluck('name'),
+                    ]
+                    : null,
             ],
-        ];
+        ]);
     }
 }

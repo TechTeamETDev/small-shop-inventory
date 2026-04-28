@@ -1,26 +1,43 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 
-export default function Dashboard() {
+import { usePage } from "@inertiajs/react";
+import { useState, useEffect } from "react";
+
+const Dashboard = () => {
+    const {
+        products: initialProducts,
+        categories,
+        auth,
+        totalProducts,
+        lowStockCount,
+        lowStockProducts,
+    } = usePage().props;
+
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Dashboard
-                </h2>
-            }
-        >
-            <Head title="Dashboard" />
+        <>
+            {/* Stats Cards ONLY */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="bg-white rounded-lg p-5">
+                    <p className="text-sm text-gray-500">Total Products</p>
+                    <p className="text-2xl font-semibold">{totalProducts}</p>
+                </div>
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900">
-                            You're logged in!
-                        </div>
-                    </div>
+                <div className="bg-white rounded-lg p-5">
+                    <p className="text-sm text-gray-500">Today's Sales</p>
+                    <p className="text-2xl font-semibold">--</p>
+                </div>
+
+                <div className="bg-white rounded-lg p-5">
+                    <p className="text-sm text-gray-500">Low Stock Products</p>
+                    <p className="text-2xl font-semibold text-red-600">
+                        {lowStockCount}
+                    </p>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </>
     );
-}
+};
+
+Dashboard.layout = (page) => <AuthenticatedLayout>{page}</AuthenticatedLayout>;
+
+export default Dashboard;
