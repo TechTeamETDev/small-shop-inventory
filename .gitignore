@@ -1,25 +1,45 @@
-*.log
+# ===== System =====
 .DS_Store
+Thumbs.db
+
+# ===== Env files =====
 .env
-.env.backup
-.env.production
+.env.*
+auth.json
+
+# ===== IDEs =====
+.vscode/
+.idea/
+.fleet/
+.nova/
+.zed/
+
+# ===== Python =====
+**/venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+pip-log.txt
+
+# ===== Logs =====
+*.log
+
+# ===== PHP / Laravel =====
 .phpactor.json
 .phpunit.result.cache
-/.fleet
-/.idea
-/.nova
-/.phpunit.cache
-/.vscode
-/.zed
-/auth.json
-/node_modules
+.phpunit.cache/
+_ide_helper.php
+
+# Laravel / build
 /public/build
 /public/hot
 /public/storage
 /storage/*.key
 /storage/pail
 /vendor
-_ide_helper.php
 Homestead.json
 Homestead.yaml
-Thumbs.db
+
+# Node
+node_modules/
