@@ -1,19 +1,69 @@
 from sqlalchemy import create_engine, text
 import pandas as pd
 from dotenv import load_dotenv
+import logging
+from typing import Optional, Dict, Any
+from datetime import datetime
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 class Database:
     """
-    Handles all database queries for AI engine
+    Production-ready AI Engine DB layer
     """
 
     def __init__(self, db_url: str):
-        self.engine = create_engine(db_url, pool_pre_ping=True)
+        self.engine = create_engine(
+            db_url,
+            pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20
+        )
 
-    def get_sales_history(self, product_id: int, start_date=None, end_date=None):
+    # =============================
+    # CORE EXECUTION
+    # =============================
+    def fetch_all(self, query: str, params: dict = None):
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute(text(query), params or {})
+                return result.mappings().all()
+        except Exception as e:
+            logger.exception(f"fetch_all failed: {e}")
+            raise
+
+    def fetch_one(self, query: str, params: dict = None):
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute(text(query), params or {})
+                return result.mappings().first()
+        except Exception as e:
+            logger.exception(f"fetch_one failed: {e}")
+            raise
+
+    # =============================
+    # DATE HANDLING
+    # =============================
+    def _to_datetime(self, value):
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        return pd.to_datetime(value)
+
+    # =============================
+    # SALES HISTORY (NO BROKEN CACHE)
+    # =============================
+    def get_sales_history_cached(
+        self,
+        product_id: int,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ):
+
         query = """
         SELECT 
             DATE(s.sale_date) as ds,
@@ -25,49 +75,122 @@ class Database:
 
         params = {"product_id": product_id}
 
-        if start_date:
-            query += " AND s.sale_date >= :start_date"
-            params["start_date"] = start_date
+        start_dt = self._to_datetime(start_date)
+        end_dt = self._to_datetime(end_date)
 
-        if end_date:
+        if start_dt is not None:
+            query += " AND s.sale_date >= :start_date"
+            params["start_date"] = start_dt
+
+        if end_dt is not None:
             query += " AND s.sale_date <= :end_date"
-            params["end_date"] = end_date
+            params["end_date"] = end_dt
 
         query += """
         GROUP BY DATE(s.sale_date)
         ORDER BY ds ASC
         """
 
-        try:
-            with self.engine.connect() as conn:
-                result = conn.execute(text(query), params)
-                rows = result.fetchall()
+        rows = self.fetch_all(query, params)
 
-            df = pd.DataFrame(rows, columns=["ds", "y"])
+        df = pd.DataFrame(rows, columns=["ds", "y"]) if rows else pd.DataFrame(columns=["ds", "y"])
 
-            if df.empty:
-                return df
-
-            df = df.copy()
+        if not df.empty:
             df["ds"] = pd.to_datetime(df["ds"])
-            df["y"] = df["y"].astype(float)
+            df["y"] = pd.to_numeric(df["y"], errors="coerce").fillna(0)
 
-            return df
+        return df
 
-        except Exception as e:
-            print(f"[DB ERROR] get_sales_history: {e}")
-            return pd.DataFrame(columns=["ds", "y"])
+    # =============================
+    # PRODUCT LOOKUP
+    # =============================
+    def get_product_by_id(self, product_id: int) -> Optional[Dict[str, Any]]:
 
-    def get_products(self):
-        query = "SELECT id, name, current_quantity FROM products"
+        query = """
+        SELECT 
+            id,
+            name,
+            sku,
+            current_quantity,
+            unit_buy_price,
+            unit_sell_price,
+            min_stock_level,
+            is_active,
+            total_sold_quantity
+        FROM products
+        WHERE id = :product_id
+        LIMIT 1
+        """
 
-        try:
-            with self.engine.connect() as conn:
-                result = conn.execute(text(query))
-                rows = result.fetchall()
+        row = self.fetch_one(query, {"product_id": product_id})
 
-            return pd.DataFrame(rows, columns=["id", "name", "current_quantity"])
+        if not row:
+            return None
 
-        except Exception as e:
-            print(f"[DB ERROR] get_products: {e}")
-            return pd.DataFrame()
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "sku": row["sku"],
+            "current_quantity": int(row["current_quantity"] or 0),
+            "unit_buy_price": float(row["unit_buy_price"] or 0),
+            "unit_sell_price": float(row["unit_sell_price"] or 0),
+            "min_stock_level": int(row["min_stock_level"] or 0),
+            "is_active": bool(row["is_active"]),
+            "total_sold_quantity": int(row["total_sold_quantity"] or 0)
+        }
+
+    # =============================
+    # PRODUCTS LIST
+    # =============================
+    def get_products(self) -> pd.DataFrame:
+
+        query = """
+        SELECT id, name, current_quantity 
+        FROM products
+        WHERE is_active = 1
+        ORDER BY name ASC
+        """
+
+        rows = self.fetch_all(query)
+
+        return pd.DataFrame(rows, columns=["id", "name", "current_quantity"]) if rows else pd.DataFrame(
+            columns=["id", "name", "current_quantity"]
+        )
+
+    # =============================
+    # FULL PRODUCTS TABLE
+    # =============================
+    def get_all_products_full(self) -> pd.DataFrame:
+
+        query = """
+        SELECT 
+            id,
+            name,
+            sku,
+            current_quantity,
+            min_stock_level,
+            total_sold_quantity,
+            is_active
+        FROM products
+        ORDER BY id DESC
+        """
+
+        rows = self.fetch_all(query)
+
+        return pd.DataFrame(rows, columns=[
+            "id",
+            "name",
+            "sku",
+            "current_quantity",
+            "min_stock_level",
+            "total_sold_quantity",
+            "is_active"
+        ]) if rows else pd.DataFrame(columns=[
+            "id",
+            "name",
+            "sku",
+            "current_quantity",
+            "min_stock_level",
+            "total_sold_quantity",
+            "is_active"
+        ])

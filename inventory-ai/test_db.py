@@ -1,9 +1,5 @@
 from app.db import Database
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
+db = Database("mysql+pymysql://root:@localhost/smallshop")
 
-db = Database(os.getenv("DB_URL"))
-
-print(db.get_products())
+print(db.get_product_by_id(1))

@@ -132,3 +132,4 @@ class ExplanationEngine:
             f"Context: {context}\n"
             f"(Replace with real LLM call in Phase 4)"
         )
+        
