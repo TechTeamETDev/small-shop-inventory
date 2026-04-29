@@ -8,18 +8,18 @@ class ProphetEngine:
 
     Responsibilities:
     - Validate sales data
-    - Clean & normalize time series
+    - Clean time series
     - Train forecasting model
-    - Generate future demand predictions
-    - Add inventory-aware insights
+    - Generate demand predictions
+    - Provide inventory intelligence
     """
 
     def __init__(self):
         self.models = {}
 
-    # -----------------------------
+    # =============================
     # MAIN PREDICTION
-    # -----------------------------
+    # =============================
     def predict(
         self,
         product_id: int,
@@ -27,22 +27,10 @@ class ProphetEngine:
         periods: int = 30,
         current_stock: int = 0
     ):
-        """
-        Generate demand forecast for a product
 
-        Args:
-            product_id: Product ID
-            sales_data: DataFrame with columns [ds, y]
-            periods: forecast horizon (days)
-            current_stock: current inventory
-
-        Returns:
-            dict: forecast + inventory insights
-        """
-
-        # =============================
+        # -----------------------------
         # VALIDATION
-        # =============================
+        # -----------------------------
         if sales_data is None or sales_data.empty:
             return self._empty_response(product_id)
 
@@ -56,59 +44,56 @@ class ProphetEngine:
 
         df = sales_data.copy()
 
-        # =============================
-        # DATA CLEANING
-        # =============================
+        # -----------------------------
+        # CLEANING
+        # -----------------------------
         df["ds"] = pd.to_datetime(df["ds"], errors="coerce")
         df["y"] = pd.to_numeric(df["y"], errors="coerce").fillna(0)
 
         df = df.dropna(subset=["ds"])
-        df = df.groupby("ds").sum().reset_index()
+        df = df.groupby("ds", as_index=False).sum()
 
-        # Fill missing days (VERY IMPORTANT for Prophet)
         df = self._fill_missing_days(df)
 
-        # =============================
-        # MODEL CONFIG (STABLE)
-        # =============================
+        # -----------------------------
+        # MODEL
+        # -----------------------------
         model = Prophet(
             daily_seasonality=True,
             weekly_seasonality=True,
-            yearly_seasonality=False,  # avoid overfitting (you don't have yearly data)
-            changepoint_prior_scale=0.05  # smoother trend
+            yearly_seasonality=False,
+            changepoint_prior_scale=0.05
         )
 
         model.fit(df)
 
-        # =============================
+        # -----------------------------
         # FORECAST
-        # =============================
+        # -----------------------------
         future = model.make_future_dataframe(periods=periods)
         forecast = model.predict(future)
 
         result = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(periods).copy()
 
-        # =============================
-        # CLEAN PREDICTIONS
-        # =============================
-
-        # Remove negative demand
+        # -----------------------------
+        # CLEAN OUTPUT
+        # -----------------------------
         result["yhat"] = result["yhat"].clip(lower=0)
 
-        # Cap extreme spikes (important for small datasets)
+        # prevent extreme spikes
         mean_val = result["yhat"].mean()
-        upper_limit = max(mean_val * 3, 10)
+        upper_limit = max(mean_val * 3, 1)
         result["yhat"] = result["yhat"].clip(upper=upper_limit)
 
-        # =============================
+        # -----------------------------
         # METRICS
-        # =============================
+        # -----------------------------
         confidence = self._calculate_confidence(result)
         total_demand = int(result["yhat"].sum())
 
-        # =============================
+        # -----------------------------
         # INVENTORY LOGIC
-        # =============================
+        # -----------------------------
         stock_status = "OK"
         recommended_order = 0
 
@@ -119,9 +104,9 @@ class ProphetEngine:
         elif current_stock > total_demand * 1.5:
             stock_status = "OVERSTOCK"
 
-        # =============================
+        # -----------------------------
         # RESPONSE
-        # =============================
+        # -----------------------------
         return {
             "product_id": product_id,
             "forecast_start": str(result["ds"].iloc[0].date()),
@@ -130,18 +115,14 @@ class ProphetEngine:
             "current_stock": current_stock,
             "stock_status": stock_status,
             "recommended_order": recommended_order,
-            "confidence_score": float(round(confidence, 2)),
+            "confidence_score": round(float(confidence), 2),
             "daily_forecast": result.to_dict(orient="records")
         }
 
-    # -----------------------------
+    # =============================
     # FILL MISSING DAYS
-    # -----------------------------
+    # =============================
     def _fill_missing_days(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Ensures continuous daily time series
-        Prophet performs better with no gaps
-        """
         df = df.set_index("ds")
 
         full_range = pd.date_range(
@@ -156,25 +137,34 @@ class ProphetEngine:
 
         return df
 
-    # -----------------------------
-    # CONFIDENCE SCORE
-    # -----------------------------
+    # =============================
+    # CONFIDENCE SCORE (FIXED)
+    # =============================
     def _calculate_confidence(self, forecast_df: pd.DataFrame) -> float:
         """
-        Confidence based on prediction uncertainty
+        Production-grade confidence:
+        smoother + stable + usable for decision engine
         """
-        avg_width = (forecast_df["yhat_upper"] - forecast_df["yhat_lower"]).mean()
-        avg_value = forecast_df["yhat"].mean()
 
-        if avg_value == 0:
+        avg_width = (forecast_df["yhat_upper"] - forecast_df["yhat_lower"]).mean()
+        avg_value = forecast_df["yhat"].abs().mean()
+
+        if avg_value <= 0:
             return 0.0
 
         uncertainty_ratio = avg_width / (avg_value + 1e-9)
-        return max(0.0, 1 - uncertainty_ratio)
 
-    # -----------------------------
+        # smooth probability-like score (IMPORTANT FIX)
+        confidence = 1 / (1 + uncertainty_ratio)
+
+        # clamp for stability in SaaS systems
+        confidence = max(0.05, min(0.95, confidence))
+
+        return float(confidence)
+
+    # =============================
     # EMPTY RESPONSE
-    # -----------------------------
+    # =============================
     def _empty_response(self, product_id: int) -> dict:
         return {
             "product_id": product_id,
