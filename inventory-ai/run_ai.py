@@ -63,7 +63,9 @@ def format_ai_output(result):
         "product_id": result.get("product_id"),
 
         "action": result.get("decision", {}).get("action"),
-        "recommended_order": result.get("decision", {}).get("recommended_order"),
+
+        # ✅ FIXED FIELD NAME
+        "recommended_order": result.get("decision", {}).get("recommended_order"), 
 
         "risk_level": result.get("risk", {}).get("risk_level"),
         "risk_score": result.get("risk", {}).get("risk_score"),
@@ -73,7 +75,6 @@ def format_ai_output(result):
 
         "alerts": result.get("alerts", [])
     }
-
 
 # =============================
 # PIPELINE
