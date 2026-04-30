@@ -51,22 +51,22 @@ export default function Create({ products, categories }) {
     };
 
     const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+const submitSale = () => {
+    if (cart.length === 0) return alert("Cart is empty!");
+    if (!customerName.trim()) return alert("Customer name is required!");
 
-    const submitSale = () => {
-        if (cart.length === 0) return alert("Cart is empty!");
-        if (!customerName.trim()) return alert("Customer name is required!");
-
-        router.post(route("sales.store"), {
-            customer_name: customerName,
-            customer_phone: customerPhone || null,
-            payment_method: paymentMethod,
-            items: cart.map((item) => ({
-                product_id: item.id,
-                quantity: item.qty,
-                unit_price: item.price,
-            })),
-        });
-    };
+    router.post(route("sales.store"), {
+        customer_name: customerName,
+        customer_phone: customerPhone || null,
+        payment_method: paymentMethod,
+        total_amount: total,
+        items: cart.map((item) => ({
+            product_id: item.id,
+            quantity: item.qty,
+            unit_price: item.price,
+        })),
+    });
+};
 
     const cancelOrder = () => setCart([]);
     const goBack = () => router.visit(route("sales.index"));

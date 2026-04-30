@@ -42,11 +42,11 @@ public function create()
 
   public function store(Request $request)
 {
-  $validated = $request->validate([
-    'full_name' => 'required|string|max:255',
-    'email' => 'nullable|email',
-    'phone' => 'nullable|string|max:20',
+$validated = $request->validate([
+    'customer_name' => 'required|string|max:255',
+    'customer_phone' => 'nullable|string|max:20',
     'payment_method' => 'required|in:cash,cbe,other_bank,telebirr',
+    'total_amount' => 'required|numeric|min:0',
 
     'items' => 'required|array|min:1',
     'items.*.product_id' => 'required|exists:products,id',
@@ -56,15 +56,14 @@ public function create()
 
     return DB::transaction(function () use ($validated) {
 
-        $sale = Sale::create([
-            'user_id' => auth()->id(),
-            'full_name' => $validated['full_name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'],
-            'payment_method' => $validated['payment_method'],
-            'total_amount' => 0,
-            'status' => 'completed',
-        ]);
+       $sale = Sale::create([
+    'user_id' => auth()->id(),
+    'customer_name' => $validated['customer_name'],
+    'customer_phone' => $validated['customer_phone'],
+    'payment_method' => $validated['payment_method'],
+    'total_amount' => $validated['total_amount'],
+    'status' => 'completed',
+]);
 
         $total = 0;
 
@@ -78,14 +77,14 @@ public function create()
 
             $subtotal = $item['quantity'] * $item['unit_price'];
 
-            $sale->items()->create([
-                'product_id' => $item['product_id'],
-                'quantity' => $item['quantity'],
-                'unit_price' => $item['unit_price'],
-                'subtotal' => $subtotal,
-                'profit' => $subtotal - ($product->unit_buy_price * $item['quantity']),
-
-            ]);
+   $sale->items()->create([
+    'product_id' => $item['product_id'],
+    'quantity' => $item['quantity'],
+    'unit_cost' => $product->unit_buy_price,
+    'unit_price' => $item['unit_price'],
+    'subtotal' => $subtotal,
+    'profit' => $subtotal - ($product->unit_buy_price * $item['quantity']),
+]);
 
             $product->decrement('current_quantity', $item['quantity']);
 
