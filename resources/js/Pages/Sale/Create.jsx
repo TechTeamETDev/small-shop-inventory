@@ -1,17 +1,24 @@
 import { useState } from "react";
 import { router } from "@inertiajs/react";
 
-export default function Create({ products }) {
+export default function Create({ products, categories }) {
     const [search, setSearch] = useState("");
     const [cart, setCart] = useState([]);
     const [paymentMethod, setPaymentMethod] = useState("cash");
     const [customerName, setCustomerName] = useState("");
     const [customerPhone, setCustomerPhone] = useState("");
+    const [category, setCategory] = useState("all");
 
     // Filter products
-    const filteredProducts = products.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase()),
-    );
+   const filteredProducts = products.filter((p) => {
+    const matchesSearch =
+        p.name.toLowerCase().includes(search.toLowerCase());
+
+    const matchesCategory =
+        category === "all" || p.category_id == category;
+
+    return matchesSearch && matchesCategory;
+});
 
     // Add to cart
     const addToCart = (product) => {
@@ -94,6 +101,21 @@ export default function Create({ products }) {
                         onChange={(e) => setSearch(e.target.value)}
                     />
 
+                    <select
+    className="w-full border p-2 rounded mb-4"
+    value={category}
+    onChange={(e) => setCategory(e.target.value)}
+>
+    <option value="all">All Categories</option>
+
+    {/* you must pass categories from backend */}
+    {categories?.map((c) => (
+        <option key={c.id} value={c.id}>
+            {c.name}
+        </option>
+    ))}
+</select>
+
                     <div className="grid grid-cols-3 gap-4">
                         {filteredProducts.map((product) => (
                             <div
@@ -175,9 +197,23 @@ export default function Create({ products }) {
                                                 <p className="text-sm font-medium">
                                                     {item.name}
                                                 </p>
-                                                <p className="text-xs text-gray-400">
-                                                    {item.qty} × {item.price}
-                                                </p>
+                                                <input
+    type="number"
+    className="w-16 border text-center"
+    value={item.qty}
+    min="1"
+    onChange={(e) => {
+        const value = Number(e.target.value);
+
+        setCart((prev) =>
+            prev.map((p) =>
+                p.id === item.id
+                    ? { ...p, qty: value > 0 ? value : 1 }
+                    : p
+            )
+        );
+    }}
+/>
                                             </div>
 
                                             <div className="flex items-center gap-2">
