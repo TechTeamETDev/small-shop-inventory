@@ -22,7 +22,7 @@ load_dotenv(env_path)
 DB_URL = os.getenv("DATABASE_URL")
 
 if not DB_URL:
-    raise Exception("❌ DATABASE_URL not found in .env")
+    raise Exception(" DATABASE_URL not found in .env")
 
 # =============================
 # IMPORTS
