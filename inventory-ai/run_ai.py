@@ -22,7 +22,12 @@ load_dotenv(env_path)
 DB_URL = os.getenv("DATABASE_URL")
 
 if not DB_URL:
-    raise Exception(" DATABASE_URL not found in .env")
+    # Fall back to local sqlite DB for demo purposes so the AI module is
+    # runnable without an external MySQL server. This creates a file
+    # `inventory-ai/demo.db` in the project root.
+    demo_db_path = os.path.join(ROOT_DIR, "demo.db")
+    DB_URL = f"sqlite:///{demo_db_path}"
+    print("WARNING: DATABASE_URL not found; falling back to sqlite demo DB:", DB_URL)
 
 # =============================
 # IMPORTS
@@ -65,7 +70,7 @@ def format_ai_output(result):
         "action": result.get("decision", {}).get("action"),
 
         # ✅ FIXED FIELD NAME
-        "recommended_order": result.get("decision", {}).get("recommended_order"), 
+        "recommended_order": result.get("decision", {}).get("recommended_order"),
 
         "risk_level": result.get("risk", {}).get("risk_level"),
         "risk_score": result.get("risk", {}).get("risk_score"),

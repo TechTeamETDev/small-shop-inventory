@@ -94,17 +94,21 @@ class DecisionEngine:
             action = "RESTOCK"
         else:
             action = "HOLD"
-
-        return {
+        result = {
             "product_id": product_id,
             "action": action,
             "stock": stock,
             "daily_demand": daily_demand,
             "target_stock": target_stock,
 
-            # ⭐ MAIN OUTPUT
+            # ⭐ MAIN OUTPUT (canonical name)
+            "recommended_order": purchase_qty,
+
+            # backward-compatible alias
             "recommended_purchase_qty": purchase_qty,
 
             "confidence": confidence,
             "reason": "Forecast-based inventory planning"
         }
+
+        return result

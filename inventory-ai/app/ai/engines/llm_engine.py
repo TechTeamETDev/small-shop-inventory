@@ -42,11 +42,22 @@ class ExplanationEngine:
     # CONTEXT BUILDER (IMPORTANT)
     # -----------------------------
     def _build_context(self, forecast: Dict, decision: Dict) -> Dict:
+        product = (forecast or {}).get("product") or {}
+        metrics = (forecast or {}).get("metrics") or {}
+        product_id = product.get("id") or forecast.get("product_id")
+        product_name = product.get("name")
+        product_sku = product.get("sku")
+
+        label_parts = [p for p in [product_name, product_sku] if p]
+        product_label = " / ".join(label_parts) if label_parts else f"Product {product_id}"
+
         return {
-            "product_id": forecast.get("product_id"),
-            "demand": forecast.get("predicted_demand", 0),
-            "stock": forecast.get("current_stock", 0),
-            "confidence": float(forecast.get("confidence_score", 0)),
+            "product_id": product_id,
+            "product_label": product_label,
+            "demand": metrics.get("predicted_demand", 0),
+            "stock": product.get("current_stock", 0),
+            "min_stock": product.get("min_stock_level", 0),
+            "confidence": float(metrics.get("confidence_score", 0)),
             "action": decision.get("action"),
             "recommended_order": decision.get("recommended_order", 0),
             "reason": decision.get("reason", "Model-based decision")
@@ -58,19 +69,36 @@ class ExplanationEngine:
     def _rule_based_explain(self, ctx: Dict) -> str:
 
         product_id = ctx["product_id"]
+        product_label = ctx.get("product_label") or f"Product {product_id}"
         demand = ctx["demand"]
         stock = ctx["stock"]
+        min_stock = ctx.get("min_stock", 0) or 0
         confidence = ctx["confidence"]
         action = ctx["action"]
+        recommended_order = ctx.get("recommended_order", 0) or 0
 
         # =============================
         # LOW CONFIDENCE CASE
         # =============================
         if confidence < 0.5:
+            if stock <= 0:
+                return (
+                    f"We have low forecast confidence ({confidence:.2f}) for {product_label}, "
+                    "but stock is already at zero. "
+                    "Consider a small emergency replenishment while we gather more data."
+                )
+
+            if min_stock and stock <= min_stock:
+                return (
+                    f"Forecast confidence is low ({confidence:.2f}) for {product_label}. "
+                    f"Stock is below the minimum level ({stock:.0f} / {min_stock:.0f}). "
+                    "A cautious top-up is recommended until we have stronger signals."
+                )
+
             return (
-                f"Forecast for Product {product_id} has low confidence ({confidence:.2f}). "
-                f"Decision '{action}' is conservative due to insufficient data reliability. "
-                f"Business impact is minimized by avoiding aggressive inventory changes."
+                f"Forecast confidence is low ({confidence:.2f}) for {product_label}. "
+                f"For now, we recommend {action.replace('_', ' ').lower()} to avoid acting on weak data. "
+                "Collect more sales data to unlock a stronger recommendation."
             )
 
         # =============================
@@ -78,9 +106,9 @@ class ExplanationEngine:
         # =============================
         if action == "EMERGENCY_RESTOCK":
             return (
-                f"CRITICAL ALERT: Product {product_id} demand ({demand}) far exceeds stock ({stock}). "
-                f"The system recommends immediate emergency restocking to prevent stockout risk. "
-                f"Confidence level: {confidence:.2f}. Business priority: HIGH."
+                f"Urgent: {product_label} is trending toward stockout. "
+                f"Forecast demand ({demand:.0f}) far exceeds available stock ({stock:.0f}). "
+                f"Restock immediately; suggested order is {recommended_order:.0f} units."
             )
 
         # =============================
@@ -88,10 +116,9 @@ class ExplanationEngine:
         # =============================
         if action == "RESTOCK":
             return (
-                f"Inventory recommendation for Product {product_id}: RESTOCK. "
-                f"Forecasted demand is {demand} units vs {stock} available units. "
-                f"Confidence is {confidence:.2f}, indicating stable predictive signal. "
-                f"This action reduces stockout risk while maintaining healthy inventory flow."
+                f"Recommendation: restock {product_label}. "
+                f"Projected demand ({demand:.0f}) is higher than current stock ({stock:.0f}). "
+                f"Confidence is {confidence:.2f}. Suggested order is {recommended_order:.0f} units."
             )
 
         # =============================
@@ -99,19 +126,18 @@ class ExplanationEngine:
         # =============================
         if action in ["OVERSTOCK", "REDUCE_STOCK"]:
             return (
-                f"Product {product_id} shows overstock conditions. "
-                f"Current stock ({stock}) exceeds forecasted demand ({demand}). "
-                f"Recommendation: slow procurement or trigger promotional strategy. "
-                f"Confidence: {confidence:.2f}."
+                f"{product_label} appears overstocked. "
+                f"Current stock ({stock:.0f}) exceeds expected demand ({demand:.0f}). "
+                "Consider slowing reorders or running a promotion to reduce carrying cost."
             )
 
         # =============================
         # HOLD (DEFAULT)
         # =============================
         return (
-            f"Product {product_id} is stable. "
-            f"No immediate action required as stock ({stock}) aligns with demand forecast ({demand}). "
-            f"System recommends monitoring trend before next decision cycle."
+            f"{product_label} looks stable. "
+            f"Current stock ({stock:.0f}) aligns with projected demand ({demand:.0f}). "
+            "Maintain current purchasing and review again after more sales data."
         )
 
     # -----------------------------
@@ -132,4 +158,3 @@ class ExplanationEngine:
             f"Context: {context}\n"
             f"(Replace with real LLM call in Phase 4)"
         )
-        

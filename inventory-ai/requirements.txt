@@ -9,3 +9,4 @@ holidays==0.95
 SQLAlchemy>=2.0
 PyMySQL>=1.1
 python-dotenv>=1.0
+Flask>=2.3

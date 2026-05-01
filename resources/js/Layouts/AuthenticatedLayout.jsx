@@ -99,6 +99,32 @@ export default function AuthenticatedLayout({ header, children }) {
             permission: null,
         },
         {
+            name: "AI Insights",
+            icon: (
+                <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9.75 3a2.25 2.25 0 00-2.25 2.25v1.5a2.25 2.25 0 01-2.25 2.25H3.75A2.25 2.25 0 001.5 11.25v1.5A2.25 2.25 0 003.75 15h1.5a2.25 2.25 0 012.25 2.25v1.5A2.25 2.25 0 009.75 21h1.5A2.25 2.25 0 0013.5 18.75v-1.5A2.25 2.25 0 0115.75 15h1.5A2.25 2.25 0 0019.5 12.75v-1.5A2.25 2.25 0 0017.25 9h-1.5a2.25 2.25 0 01-2.25-2.25v-1.5A2.25 2.25 0 0011.25 3h-1.5z"
+                    />
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6"
+                    />
+                </svg>
+            ),
+            href: "/ai-insights",
+            permission: null,
+        },
+        {
             name: "Products",
             icon: (
                 <svg

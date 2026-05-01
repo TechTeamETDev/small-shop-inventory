@@ -7,10 +7,9 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\PurchaseController;
-use App\Http\Controllers\AnalyticsController;
-use App\Http\Controllers\ProfitController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\StockAdjustmentController;
+use App\Http\Controllers\AiController;
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Application;
@@ -59,27 +58,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('products', ProductController::class)->except(['create', 'edit', 'show']);
     Route::resource('suppliers', SupplierController::class);
     // Stock Adjustments
-Route::get('/stock-adjustments/create', [StockAdjustmentController::class, 'create'])
-    ->name('stock-adjustments.create');
+    Route::get('/stock-adjustments/create', [StockAdjustmentController::class, 'create'])
+        ->name('stock-adjustments.create');
 
-Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])
-    ->name('stock-adjustments.store');
+    Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])
+        ->name('stock-adjustments.store');
     Route::put('/stock-adjustments/{id}', [StockAdjustmentController::class, 'update']);
-Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'destroy']);
-Route::put('/stock-adjustments/{id}', [StockAdjustmentController::class, 'update']);
-Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'destroy']);
+    Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'destroy']);
+    Route::put('/stock-adjustments/{id}', [StockAdjustmentController::class, 'update']);
+    Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'destroy']);
     // Sales Routes
     Route::resource('sales', SaleController::class);
 
     // --- Purchases Section (Cleaned Up) ---
-    
+
     // 1. Index (List)
     Route::get('/purchases', [PurchaseController::class, 'index'])->name('purchases.index');
 
     // 2. Creation & Storage (Moved outside specific permission for testing)
     Route::get('/purchases/create', [PurchaseController::class, 'create'])->name('purchases.create');
     Route::post('/purchases', [PurchaseController::class, 'store'])->name('purchases.store');
-    
+
     // 3. Dynamic Filter Route
     Route::get('/purchases/get-products/{categoryId}', [PurchaseController::class, 'getProductsByCategory'])
         ->name('purchases.getProducts');
@@ -87,17 +86,9 @@ Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'des
     // 4. Other Actions (Show, Edit, Update, Destroy)
     Route::resource('purchases', PurchaseController::class)->except(['index', 'create', 'store']);
 
-
-    // Analytics & Profit Reports
-    Route::middleware(['permission:view analytics'])->group(function () {
-        Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
-    });
-
-    Route::middleware(['permission:view profit reports'])->group(function () {
-        Route::get('/profit', [ProfitController::class, 'index'])->name('profit.index');
-    });
-    
-
+    // AI Insights
+    Route::get('/ai-insights', [AiController::class, 'index'])->name('ai.insights');
+    Route::get('/ai/product/{id}', [AiController::class, 'product'])->name('ai.product');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
