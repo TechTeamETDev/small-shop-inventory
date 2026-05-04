@@ -15,13 +15,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1️ First seed roles and permissions (from laravel-migration)
-        $this->call(RolePermissionSeeder::class);
+        // User::factory(10)->create();
 
-        // 2️ Then seed users (Admin & Employee) (from laravel-migration)
-        $this->call(UsersSeeder::class);
-
-        // 3️ Optional: create a single test user (from HEAD)
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',

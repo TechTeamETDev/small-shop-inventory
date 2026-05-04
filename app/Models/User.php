@@ -2,49 +2,31 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Spatie\Permission\Traits\HasRoles; // Spatie Role/Permission trait
 
+#[Fillable(['name', 'email', 'password'])]
+#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasRoles;
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
      */
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'status',
-        'last_activity',
-        'must_reset_password',
-    ];
-
-    /**
-     * The attributes that should be hidden for arrays.
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    /**
-     * The attributes that should be cast.
-     */
-    protected $casts = [
-         'password' => 'hashed',
-        'email_verified_at' => 'datetime',
-        'last_activity' => 'datetime',
-        'must_reset_password' => 'boolean',
-    ];
-   
-
-    /**
-     * Automatically hash password when set
-     */
-   
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
+    }
 }
