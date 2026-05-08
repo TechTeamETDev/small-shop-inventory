@@ -34,7 +34,7 @@ class InventoryScheduler:
                 if not result:
                     continue
 
-                action = result.get("prediction_result", {}).get("recommended_action")
+                action = getattr(result, "prediction_result", {}).get("recommended_action")
 
                 self.logger.info(f"[DEMO] Product {pid} → {action}")
 
@@ -70,7 +70,7 @@ class InventoryScheduler:
                 if not result:
                     continue
 
-                pred = result.get("prediction_result", {})
+                pred = getattr(result, "prediction_result", {})
 
                 demand = float(pred.get("predicted_demand", 0))
                 stock = float(pred.get("current_quantity", 0))
@@ -88,7 +88,7 @@ class InventoryScheduler:
                 product_scores.append((pid, demand))
 
                 # alerts count
-                for a in result.get("alerts_result", []):
+                for a in getattr(result, "alerts_result", []):
                     if a.get("priority") == "HIGH":
                         critical_alerts_count += 1
 

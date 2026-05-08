@@ -10,6 +10,7 @@ from app.ai.engines.risk_engine import RiskEngine
 from app.ai.engines.alert_engine import AlertEngine
 from app.ai.engines.llm_engine import ExplanationEngine
 
+from app.ai.core.formatter import to_api_response
 from app.ai.core.pipeline import InventoryPipeline
 from app.ai_repository import AIRepository
 
@@ -66,47 +67,21 @@ def run_ai(product_id: int):
         if not context:
             raise ValueError("Pipeline returned no context")
 
-        prediction = getattr(context, "prediction_result", None)
-        insight = getattr(context, "insight_result", None)
-        alerts = getattr(context, "alerts_result", [])
-        decision = getattr(context, "decision", {})
-        risk = getattr(context, "risk", {})
-        forecast = getattr(context, "forecast", {})
+        response = to_api_response(context)
 
         # =====================
         # VALIDATION
         # =====================
-        if not prediction:
+        if not response.get("prediction"):
             raise ValueError("Missing prediction_result")
 
-        if not insight:
+        if not response.get("insight"):
             raise ValueError("Missing insight_result")
 
         # =====================
         # RESPONSE (FULL STRUCTURE)
         # =====================
-        return {
-            "status": "success",
-
-            "product_id": product_id,
-
-            # MAIN AI OUTPUTS
-            "prediction": prediction,
-            "insight": insight,
-            "alerts": alerts,
-
-            # EXTRA ENGINE OUTPUTS
-            "decision": decision,
-            "risk": risk,
-
-            # META INFO
-            "meta": {
-                "confidence": (
-                    forecast.get("metrics", {}).get("confidence_score")
-                    if forecast else None
-                )
-            }
-        }
+        return response
 
     except Exception as e:
         raise HTTPException(

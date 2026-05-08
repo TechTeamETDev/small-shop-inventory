@@ -63,7 +63,7 @@ class InventoryPipeline:
         for step in self.steps:
             self._execute_step(step, context)
 
-        return getattr(context, "final_output", None)
+        return context
 
     # =========================================================
     def _execute_step(self, step, context):

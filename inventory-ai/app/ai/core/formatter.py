@@ -1,31 +1,41 @@
 def to_api_response(context):
-    forecast = context.forecast or {}
+    if isinstance(context, dict):
+        if "prediction" in context or "insight" in context:
+            return context
+
+        return {
+            "status": "success",
+            "product_id": context.get("product_id"),
+            "prediction": context.get("prediction_result", {}),
+            "insight": context.get("insight_result", {}),
+            "alerts": context.get("alerts_result", []),
+            "decision": context.get("decision", {}),
+            "risk": context.get("risk", {}),
+            "meta": context.get("meta", {}),
+            "errors": context.get("errors", []),
+        }
+
+    forecast = getattr(context, "forecast", {}) or {}
     metrics = forecast.get("metrics", {}) or {}
 
+    prediction = getattr(context, "prediction_result", {}) or {}
+    insight = getattr(context, "insight_result", {}) or {}
+    alerts = getattr(context, "alerts_result", []) or []
+    decision = getattr(context, "decision", {}) or {}
+    risk = getattr(context, "risk", {}) or {}
+    errors = getattr(context, "errors", []) or []
+
     return {
-        "product_id": context.product_id,
-
-        # =========================
-        # DECISION
-        # =========================
-        "action": (context.decision.get("action") if isinstance(context.decision, dict) else None),
-        "recommended_order": (context.decision.get("recommended_order") if isinstance(context.decision, dict) else None),
-
-        # =========================
-        # RISK
-        # =========================
-        "risk_level": (context.risk.get("risk_level") if isinstance(context.risk, dict) else None),
-        "risk_score": (context.risk.get("risk_score", 0) if isinstance(context.risk, dict) else 0),
-
-        # =========================
-        # FORECAST METRICS
-        # =========================
-        "predicted_demand": metrics.get("predicted_demand"),
-        "confidence": metrics.get("confidence_score"),
-
-        # =========================
-        # OUTPUTS
-        # =========================
-        "alerts": context.alerts or [],
-        "errors": context.errors or []
+        "status": "success",
+        "product_id": getattr(context, "product_id", None),
+        "prediction": prediction,
+        "insight": insight,
+        "alerts": alerts,
+        "decision": decision,
+        "risk": risk,
+        "meta": {
+            "confidence": metrics.get("confidence_score"),
+            "periods": getattr(context, "periods", None),
+        },
+        "errors": errors,
     }
