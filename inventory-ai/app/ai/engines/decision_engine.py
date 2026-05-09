@@ -5,19 +5,35 @@ class DecisionEngine:
 
     def __init__(
         self,
-        safety_factor: float = 1.3,
-        min_confidence: float = 0.5,
+        safety_factor: float = 1.15,
+        min_confidence: float = 0.3,
         reorder_days: int = 7,
         emergency_days: int = 2,
-        safety_stock: int = 10
+        safety_stock: int = 5
     ):
-        self.safety_factor = safety_factor
-        self.min_confidence = min_confidence
+        self.safety_factor = safety_factor  # ↓ 1.15 (realistic for small shops)
+        self.min_confidence = min_confidence  # ↓ 0.3 (30%, more lenient)
         self.reorder_days = reorder_days
         self.emergency_days = emergency_days
-        self.safety_stock = safety_stock
+        self.safety_stock = safety_stock  # ↓ 5 (realistic for limited capital)
 
-    def evaluate(self, forecast: dict):
+    def _calculate_dynamic_confidence_threshold(self, product_count: int) -> float:
+        """
+        Adjust confidence threshold based on product volume.
+        - Few products (1-20): Lower threshold (more conservative forecasts)
+        - Medium (20-100): Medium threshold
+        - Many (100+): Higher threshold (stricter requirements)
+        """
+        if product_count <= 20:
+            return 0.25  # Very lenient for small catalogs
+        elif product_count <= 50:
+            return 0.30  # Lenient for small shops
+        elif product_count <= 200:
+            return 0.40  # Moderate for medium shops
+        else:
+            return 0.50  # Stricter for large catalogs
+
+    def evaluate(self, forecast: dict, product_count: int = None):
 
         forecast = forecast or {}
 
@@ -41,20 +57,18 @@ class DecisionEngine:
             or (total_demand / max(periods, 1))
         )
 
+        # DYNAMIC THRESHOLD based on product volume
+        min_conf_threshold = (
+            self._calculate_dynamic_confidence_threshold(product_count)
+            if product_count
+            else self.min_confidence
+        )
+
         short_term_demand = daily_demand * self.reorder_days
-        safety_stock = max(self.safety_stock, daily_demand * 2)
+        safety_stock = max(self.safety_stock, daily_demand * 1.5)
 
-        # LOW CONFIDENCE
-        if confidence < self.min_confidence:
-            return {
-                "product_id": product_id,
-                "action": "NO_ACTION",
-                "recommended_order": 0,
-                "stock": stock,
-                "confidence": confidence,
-                "reason": "Low confidence forecast"
-            }
-
+        # compute days_of_stock first so we can override low-confidence
+        # decisions when inventory is already critical
         if daily_demand <= 0:
             days_of_stock = float("inf")
         else:
@@ -80,23 +94,39 @@ class DecisionEngine:
         action = action_map[stock_status]
 
         if stock_status == "CRITICAL":
-
+            # EMERGENCY: order for next 14 days + safety buffer
             recommended_order = int(
-                short_term_demand + safety_stock - stock
+                (daily_demand * 14) + safety_stock - stock
             )
 
+            # If stock is critical, override low-confidence and force emergency restock
             return {
                 "product_id": product_id,
                 "action": "EMERGENCY_RESTOCK",
-                "stock": stock,
-                "daily_demand": daily_demand,
-                "days_of_stock": round(days_of_stock, 2),
+                "stock": int(stock),
+                "daily_demand": round(daily_demand, 1),
+                "days_of_stock": round(days_of_stock, 1),
                 "recommended_order": max(0, recommended_order),
-                "confidence": confidence,
-                "risk_score": risk_score,
-                "reason": f"Will run out in {round(days_of_stock, 1)} days"
+                "confidence": round(confidence, 2),
+                "confidence_threshold": round(min_conf_threshold, 2),
+                "risk_score": round(risk_score, 2),
+                "reason": f"CRITICAL: Will run out in {round(days_of_stock, 1)} days. Immediate restocking required. (confidence={round(confidence,2)})"
             }
 
+        # LOW CONFIDENCE: after handling critical stock, if confidence remains
+        # below threshold, skip non-emergency recommendations
+        if confidence < min_conf_threshold:
+            return {
+                "product_id": product_id,
+                "action": "NO_ACTION",
+                "recommended_order": 0,
+                "stock": int(stock),
+                "confidence": round(confidence, 2),
+                "confidence_threshold": round(min_conf_threshold, 2),
+                "reason": f"Low confidence forecast ({round(confidence, 2)} < {round(min_conf_threshold, 2)})"
+            }
+
+        # NORMAL: order for 7-day reorder period with safety multiplier
         target_stock = (short_term_demand * self.safety_factor) + safety_stock
 
         recommended_order = int(target_stock - stock)
@@ -104,12 +134,13 @@ class DecisionEngine:
         return {
             "product_id": product_id,
             "action": action,
-            "stock": stock,
-            "daily_demand": daily_demand,
-            "days_of_stock": round(days_of_stock, 2),
-            "target_stock": target_stock,
+            "stock": int(stock),
+            "daily_demand": round(daily_demand, 1),
+            "days_of_stock": round(days_of_stock, 1),
+            "target_stock": round(target_stock, 1),
             "recommended_order": max(0, recommended_order),
-            "confidence": confidence,
-            "risk_score": risk_score,
+            "confidence": round(confidence, 2),
+            "confidence_threshold": round(min_conf_threshold, 2),
+            "risk_score": round(risk_score, 2),
             "reason": "Forecast-based inventory planning"
         }

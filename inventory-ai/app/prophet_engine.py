@@ -22,8 +22,13 @@ class ProphetEngine:
         if sales_data is None or sales_data.empty:
             return self._empty_response(product)
 
+        # If there is very little history, use a simple fallback heuristic
+        # instead of returning zeros. This gives the decision engine data to act on.
         if len(sales_data) < 7:
-            return self._empty_response(product)
+            try:
+                return self._fallback_forecast(product, sales_data, periods)
+            except Exception:
+                return self._empty_response(product)
 
         df = sales_data.copy()
 
@@ -130,4 +135,64 @@ class ProphetEngine:
                 "trend": "stable"
             },
             "forecast": []
+        }
+
+    def _fallback_forecast(self, product: Dict[str, Any], sales_data: pd.DataFrame, periods: int = 30):
+        """
+        Simple heuristic fallback when sales history is too short for Prophet.
+        - Uses average daily sales from available days
+        - Sets confidence based on number of data points and variance
+        - Produces a simple flat forecast for `periods` days
+        """
+        df = sales_data.copy()
+
+        # normalize columns
+        if "ds" in df.columns:
+            df["ds"] = pd.to_datetime(df["ds"], errors="coerce")
+        if "y" in df.columns:
+            df["y"] = pd.to_numeric(df["y"], errors="coerce").fillna(0)
+        elif "quantity" in df.columns:
+            df["y"] = pd.to_numeric(df.get("quantity"), errors="coerce").fillna(0)
+        else:
+            df["y"] = 0
+
+        df = df.dropna(subset=["ds"]) if "ds" in df.columns else df
+
+        days = max(1, len(df))
+        historical_avg = float(df["y"].mean()) if not df.empty else 0.0
+
+        # predicted demand over the period
+        predicted_demand = float(historical_avg * periods)
+        avg_daily = float(historical_avg)
+
+        # Confidence heuristic: base + data_points factor - variance penalty
+        variance = float(df["y"].std()) if not df.empty else 0.0
+        base = 0.2
+        data_factor = min(0.4, 0.05 * days)
+        variance_penalty = min(0.3, variance / (historical_avg + 1e-6) * 0.1)
+        confidence = float(np.clip(base + data_factor - variance_penalty, 0.05, 0.9))
+
+        # build simple repeated forecast records
+        records = []
+        start = pd.to_datetime(df["ds"].max()) if ("ds" in df.columns and not df.empty) else pd.Timestamp.today()
+        for i in range(1, periods + 1):
+            records.append({
+                "ds": str(start + pd.Timedelta(days=i)),
+                "yhat": avg_daily,
+                "yhat_lower": max(0, avg_daily - variance),
+                "yhat_upper": avg_daily + variance,
+            })
+
+        trend = "up" if avg_daily > (historical_avg * 1.05) else "stable"
+
+        return {
+            "product_id": product.get("id"),
+            "product": self._normalize_product(product),
+            "forecast": records,
+            "metrics": {
+                "predicted_demand": predicted_demand,
+                "avg_daily_demand": avg_daily,
+                "confidence_score": confidence,
+                "trend": trend
+            }
         }

@@ -71,7 +71,7 @@ class Database:
     # =========================================================
     def get_product_by_id(self, product_id: int):
         query = """
-        SELECT 
+        SELECT
             id,
             name,
             sku,
@@ -102,7 +102,7 @@ class Database:
     def get_sales_history_cached(self, product_id: int, start_date=None, end_date=None):
 
         query = """
-        SELECT 
+        SELECT
             DATE(s.sale_date) as created_at,
             SUM(si.quantity) as quantity
         FROM sales s
@@ -148,6 +148,11 @@ class Database:
             WHERE is_active = 1
         """)
         return pd.DataFrame(rows)
+
+    def get_product_count(self):
+        """Get total count of active products"""
+        row = self.fetch_one("SELECT COUNT(*) as count FROM products WHERE is_active = 1")
+        return row["count"] if row else 0
 
     # =========================================================
     # KPI: SALES

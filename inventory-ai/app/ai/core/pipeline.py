@@ -88,12 +88,23 @@ class InventoryPipeline:
             periods=context.periods
         ) or {}
 
+        # Round metrics for clean output
+        if context.forecast.get("metrics"):
+            metrics = context.forecast["metrics"]
+            metrics["predicted_demand"] = round(metrics.get("predicted_demand", 0), 1)
+            metrics["avg_daily_demand"] = round(metrics.get("avg_daily_demand", 0), 1)
+            metrics["confidence_score"] = round(metrics.get("confidence_score", 0), 2)
+
     # =========================================================
     # DECISION
     # =========================================================
     def _decision_step(self, context):
-
-        context.decision = self.decision.evaluate(context.forecast) or {}
+        # Get total product count for dynamic confidence thresholds
+        product_count = self.db.get_product_count()
+        context.decision = self.decision.evaluate(
+            context.forecast,
+            product_count=product_count
+        ) or {}
 
     # =========================================================
     # RISK
@@ -177,13 +188,13 @@ class InventoryPipeline:
         context.prediction_result = {
             "product_id": context.product_id,
             "product_name": context.name,
-            "predicted_demand": predicted,
-            "avg_daily_demand": avg_daily,
-            "current_quantity": float(context.current_quantity),
-            "confidence_score": float(metrics.get("confidence_score", 0)),
+            "predicted_demand": round(predicted, 1),
+            "avg_daily_demand": round(avg_daily, 1),
+            "current_quantity": int(context.current_quantity),
+            "confidence_score": round(float(metrics.get("confidence_score", 0)), 2),
             "trend": metrics.get("trend", "stable"),
             "recommended_action": context.decision.get("action"),
-            "risk_score": float((context.risk or {}).get("risk_score", 0)),
+            "risk_score": round(float((context.risk or {}).get("risk_score", 0)), 2),
             "forecast_start": str(date.today()),
             "forecast_end": forecast_end
         }
