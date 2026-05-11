@@ -135,6 +135,22 @@ class AIRepository:
 
                     seen.add(key)
 
+                    # Mark previous unresolved alerts of the same product and type as resolved
+                    try:
+                        conn.execute(text("""
+                        UPDATE ai_alerts
+                        SET is_resolved = TRUE
+                        WHERE product_id = :product_id
+                          AND alert_type = :alert_type
+                          AND is_resolved = FALSE
+                        """), {
+                            "product_id": alert.get("product_id"),
+                            "alert_type": alert.get("alert_type"),
+                        })
+                    except Exception:
+                        # If update fails, continue to insert new alert to avoid data loss
+                        logger.exception("Failed to mark previous alerts resolved")
+
                     conn.execute(text(query), {
                         "product_id": alert.get("product_id"),
                         "product_name": alert.get("product_name"),

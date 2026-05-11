@@ -7,7 +7,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\PurchaseController;
-use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\AnalysisController;
 use App\Http\Controllers\ProfitController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ReportController;
@@ -76,7 +76,7 @@ Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'des
     Route::resource('sales', SaleController::class);
 
     // --- Purchases Section (Cleaned Up) ---
-    
+
     // 1. Index (List)
     Route::get('/purchases', [PurchaseController::class, 'index'])->name('purchases.index');
 
@@ -84,7 +84,7 @@ Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'des
     Route::get('/purchases/create', [PurchaseController::class, 'create'])->name('purchases.create');
     Route::post('/purchases', [PurchaseController::class, 'store'])->name('purchases.store');
     Route::post('/purchases/{id}/update-payment', [PurchaseController::class, 'updatePaymentStatus'])->name('purchases.updatePayment');
-    
+
     // 3. Dynamic Filter Route
     Route::get('/purchases/get-products/{categoryId}', [PurchaseController::class, 'getProductsByCategory'])
         ->name('purchases.getProducts');
@@ -92,19 +92,22 @@ Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'des
     // 4. Other Actions (Show, Edit, Update, Destroy)
     Route::resource('purchases', PurchaseController::class)->except(['index', 'create', 'store']);
 
-    
 
 
-    // Analytics & Profit Reports
-    Route::middleware(['permission:view analytics'])->group(function () {
-        Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
-    });
+
+    // AI Analysis & Analytics
+    Route::get('/analysis', [AnalysisController::class, 'index'])->name('analysis.index');
+    Route::get('/analysis/product/{productId}/predictions', [AnalysisController::class, 'productPredictions'])->name('analysis.productPredictions');
+    Route::get('/analysis/product/{productId}/alerts', [AnalysisController::class, 'productAlerts'])->name('analysis.productAlerts');
+    Route::get('/analysis/product/{productId}/trend', [AnalysisController::class, 'predictionTrend'])->name('analysis.predictionTrend');
+    Route::post('/analysis/alert/{alertId}/resolve', [AnalysisController::class, 'resolveAlert'])->name('analysis.resolveAlert');
+    Route::get('/analysis/alerts', [AnalysisController::class, 'allAlerts'])->name('analysis.allAlerts');
 
     Route::middleware(['permission:view profit reports'])->group(function () {
         Route::get('/profit', [ReportController::class, 'index'])->name('profit.index');
        Route::get('/reports/profit-summary', [ReportController::class, 'getProfitSummary']);
     });
-    
+
 
 });
 

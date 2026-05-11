@@ -217,7 +217,7 @@ export default function AuthenticatedLayout({ header, children }) {
     },
 
         {
-            name: "Analytics",
+            name: "Analysis",
             icon: (
                 <svg
                     className="w-5 h-5"
@@ -233,8 +233,8 @@ export default function AuthenticatedLayout({ header, children }) {
                     />
                 </svg>
             ),
-            href: "/analytics",
-            permission: "view analytics",
+            href: "/analysis",
+            permission: null,
         },
         {
             name: "Profit Reports",
