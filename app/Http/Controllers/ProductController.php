@@ -29,6 +29,7 @@ class ProductController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'unit_buy_price' => 'required|numeric|min:0',
             'unit_sell_price' => 'required|numeric|gt:unit_buy_price',
+            'tax_rate' => 'nullable|numeric|min:0|max:100',
             'current_quantity' => 'nullable|integer|min:0',
             'min_stock_level' => 'nullable|integer|min:0',
         ]);
@@ -51,6 +52,7 @@ class ProductController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'unit_buy_price' => 'required|numeric|min:0',
             'unit_sell_price' => 'required|numeric|gt:unit_buy_price',
+           'tax_rate' => 'nullable|numeric|min:0|max:100',
             'current_quantity' => 'nullable|integer|min:0',
             'min_stock_level' => 'nullable|integer|min:0',
         ]);
