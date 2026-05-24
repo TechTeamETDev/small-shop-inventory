@@ -16,19 +16,22 @@ class RolePermissionSeeder extends Seeder
 
         // Define all permissions
         $permissions = [
-            'view products',
-            'create products',
-            'edit products',
-            'delete products',
-            'create purchases',
-            'view purchases',
-            'create sales',
-            'view sales',
-            'view analytics',
-            'view profit reports',
-            'manage categories',
-            'manage users'
-        ];
+    'view dashboard',
+    'view products',
+    'create products',
+    'edit products',
+    'delete products',
+    'manage categories',
+    'view sales',
+    'create sales',
+    'view purchases',
+    'create purchases',
+    'view analytics',
+    'view profit reports',
+    'manage users',
+    'manage suppliers',
+    'manage stock adjustments',
+];
 
         // Create permissions
         foreach ($permissions as $permission) {
@@ -54,6 +57,7 @@ class RolePermissionSeeder extends Seeder
 
         // Assign limited permissions to Employee
         $employee->syncPermissions(Permission::whereIn('name', [
+            'view dashboard',
             'view products',
             'create sales',
             'view sales'

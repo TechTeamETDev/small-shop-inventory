@@ -11,10 +11,10 @@ use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
-    // Show all users
     public function index()
     {
-        $users = User::with('roles')->get(); // eager load roles
+        $users = User::with('roles')->get();
+
         $roles = Role::all();
 
         return Inertia::render('Users/Index', [
@@ -23,7 +23,6 @@ class UserController extends Controller
         ]);
     }
 
-    // Store new user
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -44,7 +43,6 @@ class UserController extends Controller
         return redirect()->back()->with('success', 'User created successfully.');
     }
 
-    // Update existing user
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
@@ -68,10 +66,14 @@ class UserController extends Controller
         return redirect()->back()->with('success', 'User updated successfully.');
     }
 
-    // Delete user
     public function destroy(User $user)
     {
+        if ($user->hasRole('Admin')) {
+            return back()->with('error', 'Admin user cannot be deleted.');
+        }
+
         $user->delete();
+
         return redirect()->back()->with('success', 'User deleted successfully.');
     }
 }
