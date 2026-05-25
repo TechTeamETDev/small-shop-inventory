@@ -5,11 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\RecordsActivity;
 
 class Product extends Model
 {
     use SoftDeletes;
-    use HasFactory;
+    use HasFactory, RecordsActivity;
 
     protected $fillable = [
         'category_id',
@@ -18,6 +19,7 @@ class Product extends Model
         'current_quantity',
         'unit_buy_price',
         'unit_sell_price',
+         'tax_rate',
         'min_stock_level',
         'is_active',
     ];

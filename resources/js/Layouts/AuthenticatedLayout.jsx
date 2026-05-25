@@ -78,128 +78,88 @@ export default function AuthenticatedLayout({ header, children }) {
   const navigationItems = [
     {
         name: "Dashboard",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-        ),
         href: "/dashboard",
         permission: "dashboard.view",
+        icon: "📊",
     },
 
     {
         name: "Products",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-        ),
         href: "/products",
         permission: "products.view",
+        icon: "📦",
     },
 
     {
         name: "Categories",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l5 5a2 2 0 011.414.586L21 13a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-5-5a2 2 0 01-.586-1.414V9a2 2 0 011-1.732V7a2 2 0 01-2-2z" />
-            </svg>
-        ),
         href: "/categories",
         permission: "categories.manage",
+        icon: "🗂",
     },
 
     {
         name: "Sales",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        ),
         href: "/sales",
         permission: "sales.view",
+        icon: "💰",
     },
 
     {
         name: "Purchases",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-        ),
         href: "/purchases",
         permission: "purchases.view",
+        icon: "🛒",
     },
 
     {
         name: "Suppliers",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-        ),
         href: "/suppliers",
         permission: "suppliers.manage",
+        icon: "🚚",
     },
 
     {
         name: "Stock Adjustment",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2M6 6h12M6 18h12" />
-            </svg>
-        ),
         href: "/stock-adjustments/create",
         permission: "stock.manage",
+        icon: "📈",
     },
 
     {
         name: "Analytics",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-        ),
         href: "/analytics",
         permission: "analytics.view",
+        icon: "📉",
     },
 
     {
         name: "Profit Reports",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-        ),
         href: "/profit",
         permission: "reports.profit.view",
+        icon: "📑",
     },
 
     {
         name: "Users",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-        ),
         href: "/users",
         permission: "users.view",
+        icon: "👥",
     },
 
     {
-    name: "Roles",
-    icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-        ),
-    href: "/roles",
-    permission: "users.view",
-},
+        name: "Roles",
+        href: "/roles",
+        permission: "users.view",
+        icon: "🛡",
+    },
+
+    {
+        name: "Activity Logs",
+        href: "/activity-logs",
+        permission: "users.view",
+        icon: "📜",
+    },
 ];
-            
-      
-         
     const visibleNavigationItems = navigationItems.filter(
         (item) => !item.permission || can(item.permission),
     );
@@ -253,7 +213,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             className="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition group relative"
                         >
                             <div className="flex items-center justify-center w-8">
-                                {item.icon}
+                                <span className="text-lg">{item.icon}</span>
                             </div>
 
                             {sidebarOpen && (
