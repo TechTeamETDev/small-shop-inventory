@@ -1,19 +1,21 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\AIDashboardController;
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\SaleController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
-use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ReportController;
-use App\Http\Controllers\StockAdjustmentController;
-use App\Http\Controllers\AIDashboardController;
 use App\Http\Controllers\RoleController;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\SaleController;
+use App\Http\Controllers\StockAdjustmentController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\UserController;
+
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -43,11 +45,15 @@ Route::post('/logout', function () {
 
 /*
 |--------------------------------------------------------------------------
-| AUTH ROUTES
+| AUTHENTICATED ROUTES
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware([
+    'auth',
+    'verified',
+    \App\Http\Middleware\LogAdminActivity::class,
+])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
@@ -80,7 +86,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['permission:products.view'])->group(function () {
+    Route::middleware('permission:products.view')->group(function () {
 
         Route::resource('products', ProductController::class)
             ->except(['create', 'edit', 'show']);
@@ -92,7 +98,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['permission:categories.manage'])->group(function () {
+    Route::middleware('permission:categories.manage')->group(function () {
 
         Route::resource('categories', CategoryController::class)
             ->except(['create', 'edit', 'show']);
@@ -104,7 +110,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['permission:sales.view'])->group(function () {
+    Route::middleware('permission:sales.view')->group(function () {
 
         Route::resource('sales', SaleController::class);
     });
@@ -115,7 +121,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['permission:purchases.view'])->group(function () {
+    Route::middleware('permission:purchases.view')->group(function () {
 
         Route::get('/purchases', [PurchaseController::class, 'index'])
             ->name('purchases.index');
@@ -142,7 +148,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['permission:users.view'])->group(function () {
+    Route::middleware('permission:users.view')->group(function () {
 
         Route::get('/users', [UserController::class, 'index'])
             ->name('users.index');
@@ -162,13 +168,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | ROLES
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware('permission:users.view')->group(function () {
+
+        Route::resource('roles', RoleController::class);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
     | SUPPLIERS
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['permission:suppliers.manage'])->group(function () {
+    Route::middleware('permission:suppliers.manage')->group(function () {
 
         Route::resource('suppliers', SupplierController::class);
+
+        Route::post('/suppliers/quick-store', [SupplierController::class, 'storeQuick'])
+            ->name('suppliers.quick-store');
     });
 
     /*
@@ -177,26 +197,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['permission:stock.manage'])->group(function () {
+    Route::middleware('permission:stock.manage')->group(function () {
 
-        Route::get('/stock-adjustments/create', [StockAdjustmentController::class, 'create']);
+        Route::get('/stock-adjustments/create', [StockAdjustmentController::class, 'create'])
+            ->name('stock-adjustments.create');
 
-        Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store']);
+        Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])
+            ->name('stock-adjustments.store');
 
-        Route::put('/stock-adjustments/{id}', [StockAdjustmentController::class, 'update']);
+        Route::put('/stock-adjustments/{id}', [StockAdjustmentController::class, 'update'])
+            ->name('stock-adjustments.update');
 
-        Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'destroy']);
+        Route::delete('/stock-adjustments/{id}', [StockAdjustmentController::class, 'destroy'])
+            ->name('stock-adjustments.destroy');
     });
-
-    /*
-    |--------------------------------------------------------------------------
-    | AI
-    |--------------------------------------------------------------------------
-    */
-
-    Route::post('/ai/run/{productId}', [DashboardController::class, 'runAiManually']);
-
-    Route::post('/ai/run-all', [DashboardController::class, 'runAllAi']);
 
     /*
     |--------------------------------------------------------------------------
@@ -204,20 +218,41 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['permission:analytics.view'])->group(function () {
-
-        Route::get('/ai/dashboard', [AIDashboardController::class, 'dashboard']);
+    Route::middleware('permission:analytics.view')->group(function () {
 
         Route::get('/analytics', [AIDashboardController::class, 'dashboard'])
             ->name('analytics.index');
+
+        Route::get('/ai/dashboard', [AIDashboardController::class, 'dashboard'])
+            ->name('ai.dashboard');
     });
 
-    
-Route::middleware(['permission:users.view'])->group(function () {
+    /*
+    |--------------------------------------------------------------------------
+    | AI ACTIONS
+    |--------------------------------------------------------------------------
+    */
 
-    Route::resource('roles', RoleController::class);
+    Route::post('/ai/run/{productId}', [DashboardController::class, 'runAiManually'])
+        ->name('ai.run.single');
 
-});
+    Route::post('/ai/run-all', [DashboardController::class, 'runAllAi'])
+        ->name('ai.run.all');
+
+    /*
+    |--------------------------------------------------------------------------
+    | ACTIVITY LOGS
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware('permission:users.view')->group(function () {
+
+        Route::get('/activity-logs', [ActivityLogController::class, 'index'])
+            ->name('activity-logs.index');
+
+        Route::delete('/activity-logs', [ActivityLogController::class, 'destroy'])
+            ->name('activity-logs.destroy');
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -225,13 +260,14 @@ Route::middleware(['permission:users.view'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['permission:reports.profit.view'])->group(function () {
+    Route::middleware('permission:reports.profit.view')->group(function () {
 
         Route::get('/profit', [ReportController::class, 'index'])
             ->name('profit.index');
 
-        Route::get('/reports/profit-summary', [ReportController::class, 'getProfitSummary']);
+        Route::get('/reports/profit-summary', [ReportController::class, 'getProfitSummary'])
+            ->name('profit.summary');
     });
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
