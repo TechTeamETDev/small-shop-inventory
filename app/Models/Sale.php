@@ -15,6 +15,7 @@ class Sale extends Model
         'customer_name',
         'customer_phone',
         'total_amount',
+        'total_tax_amount',
         'total_profit',
         'payment_method',
         'sale_date',
@@ -23,6 +24,8 @@ class Sale extends Model
 
     protected $casts = [
         'total_amount' => 'decimal:2',
+        'total_tax_amount' => 'decimal:2',
+        'total_profit' => 'decimal:2',
         'sale_date' => 'datetime',
     ];
 

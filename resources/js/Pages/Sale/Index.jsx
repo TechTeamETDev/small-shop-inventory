@@ -4,6 +4,7 @@ export default function Index({ sales }) {
     const { auth } = usePage().props;
     const permissions = auth?.user?.permissions || [];
     const can = (permission) => permissions.includes(permission);
+    const money = (amount) => Number(amount || 0).toFixed(2);
 
     // Dynamic payment labels
     const paymentLabels = {
@@ -123,10 +124,11 @@ export default function Index({ sales }) {
 
                                     {/* Total */}
                                     <p className="text-lg font-semibold text-gray-900 mb-2">
-                                        Br{" "}
-                                        {parseFloat(sale.total_amount).toFixed(
-                                            2,
-                                        )}
+                                        Br {money(sale.total_amount)}
+                                    </p>
+
+                                    <p className="text-xs text-gray-500 mb-2">
+                                        Tax: Br {money(sale.total_tax_amount)}
                                     </p>
 
                                     {/* ✅ Dynamic Payment */}

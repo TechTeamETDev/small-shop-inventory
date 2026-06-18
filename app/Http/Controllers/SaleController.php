@@ -27,7 +27,7 @@ public function create()
 {
     $products = Product::where('current_quantity', '>', 0)
         ->where('is_active', true)
-        ->select('id', 'name', 'unit_sell_price', 'current_quantity', 'category_id')
+        ->select('id', 'name', 'unit_sell_price', 'tax_rate', 'current_quantity', 'category_id')
         ->get();
 
     $categories = Category::select('id', 'name')->get();
@@ -62,23 +62,28 @@ public function create()
             'customer_phone' => $validated['customer_phone'],
             'payment_method' => $validated['payment_method'],
             'total_amount' => 0, // Placeholder, will update after loop
+            'total_tax_amount' => 0,
             'total_profit' => 0, // Placeholder, will update after loop
             'status' => 'completed',
             'sale_date' => now(), // Ensuring the date is set for reporting
         ]);
 
         $totalAmount = 0;
+        $totalTaxAmount = 0;
         $totalProfit = 0; // Running total for profit
 
         foreach ($validated['items'] as $item) {
 
-            $product = Product::findOrFail($item['product_id']);
+            $product = Product::whereKey($item['product_id'])->lockForUpdate()->firstOrFail();
 
             if ($product->current_quantity < $item['quantity']) {
                 throw new \Exception("Not enough stock for {$product->name}");
             }
 
-            $subtotal = $item['quantity'] * $item['unit_price'];
+            $subtotal = round($item['quantity'] * $item['unit_price'], 2);
+            $taxRate = (float) ($product->tax_rate ?? 0);
+            $taxAmount = round($subtotal * ($taxRate / 100), 2);
+            $lineTotal = $subtotal + $taxAmount;
             
             // Calculate profit for this specific item line
             $itemProfit = $subtotal - ($product->unit_buy_price * $item['quantity']);
@@ -88,19 +93,25 @@ public function create()
                 'quantity' => $item['quantity'],
                 'unit_cost' => $product->unit_buy_price,
                 'unit_price' => $item['unit_price'],
+                'tax_rate' => $taxRate,
+                'tax_amount' => $taxAmount,
                 'subtotal' => $subtotal,
                 'profit' => $itemProfit,
+                'cost_total' => $product->unit_buy_price * $item['quantity'],
+                'stock_after_sale' => $product->current_quantity - $item['quantity'],
             ]);
 
             $product->decrement('current_quantity', $item['quantity']);
 
-            $totalAmount += $subtotal;
+            $totalAmount += $lineTotal;
+            $totalTaxAmount += $taxAmount;
             $totalProfit += $itemProfit; // Accumulate profit
         }
 
         // Final update to the main sale record
         $sale->update([
             'total_amount' => $totalAmount,
+            'total_tax_amount' => $totalTaxAmount,
             'total_profit' => $totalProfit
         ]);
 

@@ -12,6 +12,11 @@ export default function Create({ products, categories }) {
     const [showCustomerForm, setShowCustomerForm] = useState(false);
     const [customer, setCustomer] = useState(null);
 
+    const roundMoney = (amount) => Math.round((Number(amount || 0) + Number.EPSILON) * 100) / 100;
+    const money = (amount) => roundMoney(amount).toFixed(2);
+    const lineSubtotal = (item) => roundMoney(Number(item.price || 0) * Number(item.qty || 0));
+    const lineTax = (item) => roundMoney(lineSubtotal(item) * (Number(item.taxRate || 0) / 100));
+
     const filteredProducts = products.filter((p) => {
         const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
         const matchesCategory = category === "all" || p.category_id == category;
@@ -37,6 +42,7 @@ export default function Create({ products, categories }) {
                     id: product.id,
                     name: product.name,
                     price,
+                    taxRate: Number(product.tax_rate || 0),
                     qty: 1,
                 },
             ];
@@ -47,7 +53,9 @@ export default function Create({ products, categories }) {
         setCart((prev) => prev.filter((item) => item.id !== id));
     };
 
-    const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+    const subtotal = cart.reduce((sum, item) => sum + lineSubtotal(item), 0);
+    const taxTotal = cart.reduce((sum, item) => sum + lineTax(item), 0);
+    const total = subtotal + taxTotal;
 
     const submitSale = () => {
         if (cart.length === 0) return alert("Cart is empty!");
@@ -89,7 +97,7 @@ export default function Create({ products, categories }) {
                 </div>
 
                 <div className="text-sm text-gray-600">
-                    Cart: {cart.length} • Br {total.toFixed(2)}
+                    Cart: {cart.length} • Br {money(total)}
                 </div>
             </div>
 
@@ -133,7 +141,11 @@ export default function Create({ products, categories }) {
                                 <div className="font-semibold">{p.name}</div>
 
                                 <div className="text-sm text-gray-500">
-                                    Br {p.unit_sell_price}
+                                    Br {money(p.unit_sell_price)}
+                                </div>
+
+                                <div className="text-xs text-gray-500">
+                                    Tax: {Number(p.tax_rate || 0).toFixed(2)}%
                                 </div>
 
                                 <div className="text-xs text-gray-400 mt-1">
@@ -174,9 +186,10 @@ export default function Create({ products, categories }) {
 
                     {/* CART HEADER */}
                     <div className="grid grid-cols-12 bg-gray-100 p-2 text-sm font-semibold rounded">
-                        <div className="col-span-5">Item</div>
+                        <div className="col-span-4">Item</div>
                         <div className="col-span-2 text-center">Qty</div>
-                        <div className="col-span-3 text-right">Price</div>
+                        <div className="col-span-2 text-right">Subtotal</div>
+                        <div className="col-span-2 text-right">Tax</div>
                         <div className="col-span-2 text-right">Del</div>
                     </div>
 
@@ -193,8 +206,11 @@ export default function Create({ products, categories }) {
                                     key={item.id}
                                     className="grid grid-cols-12 p-2 border-b bg-gray-50"
                                 >
-                                    <div className="col-span-5">
+                                    <div className="col-span-4">
                                         {item.name}
+                                        <div className="text-xs text-gray-400">
+                                            {money(item.taxRate)}% tax
+                                        </div>
                                     </div>
 
                                     <div className="col-span-2 text-center">
@@ -230,8 +246,12 @@ export default function Create({ products, categories }) {
                                         />
                                     </div>
 
-                                    <div className="col-span-3 text-right">
-                                        {(item.price * item.qty).toFixed(2)}
+                                    <div className="col-span-2 text-right">
+                                        {money(lineSubtotal(item))}
+                                    </div>
+
+                                    <div className="col-span-2 text-right">
+                                        {money(lineTax(item))}
                                     </div>
 
                                     <div className="col-span-2 text-right">
@@ -249,9 +269,19 @@ export default function Create({ products, categories }) {
 
                     {/* TOTAL */}
                     <div className="mt-3 border-t pt-3">
+                        <div className="flex justify-between text-sm text-gray-600 mb-1">
+                            <span>Subtotal</span>
+                            <span>Br {money(subtotal)}</span>
+                        </div>
+
+                        <div className="flex justify-between text-sm text-gray-600 mb-2">
+                            <span>Tax</span>
+                            <span>Br {money(taxTotal)}</span>
+                        </div>
+
                         <div className="flex justify-between font-bold mb-2">
                             <span>Total</span>
-                            <span>Br {total.toFixed(2)}</span>
+                            <span>Br {money(total)}</span>
                         </div>
 
                         <button

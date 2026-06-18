@@ -29,7 +29,11 @@ class CategoryController extends Controller
              'description' => $request->description,
         ]);
 
-        return response()->json($category, 201);
+        if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+            return response()->json($category, 201);
+        }
+
+        return back();
     }
 
     public function update(Request $request, Category $category)

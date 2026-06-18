@@ -1,6 +1,10 @@
 import { Link, router } from "@inertiajs/react";
 
 export default function Show({ sale }) {
+    const money = (amount) => Number(amount || 0).toFixed(2);
+    const totalTaxAmount = Number(sale.total_tax_amount || 0);
+    const subtotalAmount = Number(sale.total_amount || 0) - totalTaxAmount;
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-5xl mx-auto px-4 py-8">
@@ -86,7 +90,10 @@ export default function Show({ sale }) {
                             <div>
                                 <label className="block text-xs font-medium text-gray-500 uppercase">Total Amount</label>
                                 <p className="mt-1 text-2xl font-bold text-green-600">
-                                    ${parseFloat(sale.total_amount).toFixed(2)}
+                                    Br {money(sale.total_amount)}
+                                </p>
+                                <p className="text-sm text-gray-500">
+                                    Tax: Br {money(totalTaxAmount)}
                                 </p>
                             </div>
                         </div>
@@ -107,24 +114,50 @@ export default function Show({ sale }) {
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Quantity</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Unit Price</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Subtotal</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Tax</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Line Total</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {sale.items.map((item, index) => (
-                                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 text-sm text-gray-600">{index + 1}</td>
-                                        <td className="px-6 py-4 font-medium text-gray-900">{item.product?.name || "Unknown Product"}</td>
-                                        <td className="px-6 py-4 text-gray-700">{item.quantity}</td>
-                                        <td className="px-6 py-4 text-gray-700">${parseFloat(item.unit_price).toFixed(2)}</td>
-                                        <td className="px-6 py-4 font-semibold text-gray-900">${parseFloat(item.subtotal).toFixed(2)}</td>
-                                    </tr>
-                                ))}
+                                {sale.items.map((item, index) => {
+                                    const itemSubtotal = Number(item.subtotal || 0);
+                                    const itemTax = Number(item.tax_amount || 0);
+
+                                    return (
+                                        <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4 text-sm text-gray-600">{index + 1}</td>
+                                            <td className="px-6 py-4 font-medium text-gray-900">{item.product?.name || "Unknown Product"}</td>
+                                            <td className="px-6 py-4 text-gray-700">{item.quantity}</td>
+                                            <td className="px-6 py-4 text-gray-700">Br {money(item.unit_price)}</td>
+                                            <td className="px-6 py-4 font-semibold text-gray-900">Br {money(itemSubtotal)}</td>
+                                            <td className="px-6 py-4 text-gray-700">
+                                                Br {money(itemTax)}
+                                                <div className="text-xs text-gray-400">
+                                                    {money(item.tax_rate)}%
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 font-semibold text-gray-900">Br {money(itemSubtotal + itemTax)}</td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                             <tfoot className="bg-gray-50 border-t border-gray-200">
                                 <tr>
-                                    <td colSpan="4" className="px-6 py-4 text-right font-semibold text-gray-700">Total:</td>
+                                    <td colSpan="6" className="px-6 py-3 text-right font-semibold text-gray-700">Subtotal:</td>
+                                    <td className="px-6 py-3 font-semibold text-gray-900">
+                                        Br {money(subtotalAmount)}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-3 text-right font-semibold text-gray-700">Tax:</td>
+                                    <td className="px-6 py-3 font-semibold text-gray-900">
+                                        Br {money(totalTaxAmount)}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-4 text-right font-semibold text-gray-700">Total:</td>
                                     <td className="px-6 py-4 font-bold text-green-600 text-lg">
-                                        ${parseFloat(sale.total_amount).toFixed(2)}
+                                        Br {money(sale.total_amount)}
                                     </td>
                                 </tr>
                             </tfoot>
