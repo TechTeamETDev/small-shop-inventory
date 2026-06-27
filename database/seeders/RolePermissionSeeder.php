@@ -9,36 +9,42 @@ use Spatie\Permission\PermissionRegistrar;
 
 class RolePermissionSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        // Clear cached permissions
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Define all permissions
         $permissions = [
-            'view products',
+            // Route/page permissions
+            'dashboard.view',
+            'products.view',
+            'categories.view',
+            'sales.view',
+            'purchases.view',
+            'suppliers.view',
+            'users.view',
+            'analytics.view',
+            'profit.view',
+            'activitylogs.view',
+            'stockadjustments.view',
+
+            // UI permissions already used in your React files
+            'create sales',
+            'delete sales',
+
             'create products',
             'edit products',
             'delete products',
-            'create purchases',
-            'view purchases',
-            'create sales',
-            'view sales',
-            'view analytics',
-            'view profit reports',
-            'manage categories',
-            'manage users'
+
+            'manage users',
         ];
 
-        // Create permissions
         foreach ($permissions as $permission) {
             Permission::firstOrCreate([
                 'name' => $permission,
-                'guard_name' => 'web', // must match your auth guard
+                'guard_name' => 'web',
             ]);
         }
 
-        // Create roles
         $admin = Role::firstOrCreate([
             'name' => 'Admin',
             'guard_name' => 'web',
@@ -49,14 +55,15 @@ class RolePermissionSeeder extends Seeder
             'guard_name' => 'web',
         ]);
 
-        // Assign all permissions to Admin
-        $admin->syncPermissions(Permission::all());
+        $admin->syncPermissions($permissions);
 
-        // Assign limited permissions to Employee
-        $employee->syncPermissions(Permission::whereIn('name', [
-            'view products',
+        $employee->syncPermissions([
+            'dashboard.view',
+            'products.view',
+            'sales.view',
+
+            // Employee can create sales, but cannot delete sales/products/users
             'create sales',
-            'view sales'
-        ])->get());
+        ]);
     }
 }

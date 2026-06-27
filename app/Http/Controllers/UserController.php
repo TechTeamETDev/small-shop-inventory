@@ -6,24 +6,21 @@ use Inertia\Inertia;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
-    // Show all users
     public function index()
     {
-        $users = User::with('roles')->get(); // eager load roles
-        $roles = Role::all();
-
         return Inertia::render('Users/Index', [
-            'users' => $users,
-            'roles' => $roles,
+            'users' => User::with('roles')->get(),
+            'roles' => Role::all(),
+            'permissions' => Permission::all(),
         ]);
     }
 
-    // Store new user
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -41,10 +38,9 @@ class UserController extends Controller
 
         $user->assignRole($validated['role']);
 
-        return redirect()->back()->with('success', 'User created successfully.');
+        return back()->with('success', 'User created');
     }
 
-    // Update existing user
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
@@ -54,24 +50,26 @@ class UserController extends Controller
             'role' => 'required|exists:roles,name',
         ]);
 
-        $user->name = $validated['name'];
-        $user->email = $validated['email'];
+        $user->update([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+        ]);
 
         if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
+            $user->update([
+                'password' => Hash::make($validated['password']),
+            ]);
         }
-
-        $user->save();
 
         $user->syncRoles([$validated['role']]);
 
-        return redirect()->back()->with('success', 'User updated successfully.');
+        return back()->with('success', 'User updated');
     }
 
-    // Delete user
     public function destroy(User $user)
     {
         $user->delete();
-        return redirect()->back()->with('success', 'User deleted successfully.');
+
+        return back()->with('success', 'User deleted');
     }
 }
